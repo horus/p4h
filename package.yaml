@@ -1,0 +1,78 @@
+name:                p4h
+version:             2023.1
+github:              "githubuser/p4h"
+license:             BSD3
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2023 Author name here"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/p4h#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- ansi-terminal
+- inline-c
+- inline-c-cpp
+
+ghc-options:
+- -O2
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+- -optcxx-std=c++11
+- -optcxx-Wall
+#- -optl-Wl,--allow-multiple-definition
+#- -optl-Wl,-L/usr/local/lib
+- -optl-lclient
+- -optl-lp4api
+- -optl-lrpc
+- -optl-lssl
+- -optl-lcrypto
+- -optl-lsupp
+
+frameworks:
+- Foundation
+- AppKit
+- Security
+
+library:
+  source-dirs: src
+
+executables:
+  p4h-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - p4h
+
+tests:
+  p4h-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - p4h

@@ -1,0 +1,5 @@
+.stack-work/
+*~
+*.lock
+test/
+p4api/lib_*
