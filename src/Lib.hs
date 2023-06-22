@@ -9,7 +9,7 @@ module Lib (run) where
 
 import Control.Monad (guard, liftM2)
 import Foreign.C.String (newCString, peekCString, withCString)
-import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
+import Foreign.ForeignPtr (ForeignPtr, newForeignPtr)
 import Foreign.Marshal.Alloc (free)
 import Foreign.Marshal.Array (withArray)
 import Foreign.Ptr (Ptr, nullPtr)
@@ -22,7 +22,7 @@ data ClientUser
 
 data P4 = P4 (ForeignPtr ClientApi) (ForeignPtr ClientUser)
 
-C.context (C.cppCtx <> C.baseCtx <> C.cppTypePairs [("ClientApi", [t|ClientApi|]), ("HsClientUser", [t|ClientUser|])])
+C.context (C.cppCtx <> C.baseCtx <> C.fptrCtx <> C.cppTypePairs [("ClientApi", [t|ClientApi|]), ("HsClientUser", [t|ClientUser|])])
 C.include "<iostream>"
 C.include "p4/clientapi.h"
 C.include "p4/p4libs.h"
@@ -91,30 +91,27 @@ run' ::
   Ptr (Ptr C.CChar) ->
   IO ()
 run' (P4 fpClient fpUi) cmd argc argv =
-  withForeignPtr fpClient $ \ptrClient ->
-    withForeignPtr fpUi $ \ptrUi ->
-      [C.block| void {
-          HsClientUser *ui = $(HsClientUser *ptrUi);
-          ClientApi *client = $(ClientApi *ptrClient);
-          StrBuf msg;
-          Error e;
-          if ($(int argc) > 0)
-            client->SetArgv($(int argc), $(char **argv));
-          client->Run( $(const char *cmd), ui );
-          if ( client->Final( &e ) > 0 ) {
-            if (e.Test()) {
-              e.Fmt( &msg );
-              ui->OutputError( msg.Text() );
-            }
-          }
+  [C.block| void {
+      HsClientUser *ui = $fptr-ptr:(HsClientUser *fpUi);
+      ClientApi *client = $fptr-ptr:(ClientApi *fpClient);
+      StrBuf msg;
+      Error e;
+      if ($(int argc) > 0)
+        client->SetArgv($(int argc), $(char **argv));
+      client->Run( $(const char *cmd), ui );
+      if ( client->Final( &e ) > 0 ) {
+        if (e.Test()) {
+          e.Fmt( &msg );
+          ui->OutputError( msg.Text() );
         }
-      |]
+      }
+    }
+  |]
 
 getOutput2 :: P4 -> (String -> String -> Either String String) -> IO (Either String String)
 getOutput2 (P4 _ fpUi) ret = do
   (msg', err') <- withPtrs_ $ \(msg, err) ->
-    withForeignPtr fpUi $ \ptrUi ->
-      [C.block| void { $(HsClientUser *ptrUi)->GetOutput2( $(const char **msg), $(const char **err) ); } |]
+    [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->GetOutput2( $(const char **msg), $(const char **err) ); } |]
   guard (msg' /= nullPtr && err' /= nullPtr)
   val <- liftM2 ret (peekCString msg') (peekCString err')
   free err' >> free msg'
