@@ -5,6 +5,7 @@ class HsClientUser : public ClientUser
 {
 private:
 	StrBuf msg, err;
+	char *input = 0;
 
 public:
 	// override
@@ -32,6 +33,23 @@ public:
 	void OutputError(const char *errBuf)
 	{
 		err.Set(errBuf);
+	}
+
+	void InputData(StrBuf *strbuf, Error *e)
+	{
+		if (!input) return;
+		strbuf->Set(input);
+	}
+
+	void Prompt( const StrPtr &msg, StrBuf &rsp, int noEcho, Error *e )
+	{
+		InputData(&rsp, e);
+	}
+
+	void SetInput(char *i)
+	{
+		if (NULL != input) free(input);
+		input = strdup(i);
 	}
 
 	// helpers

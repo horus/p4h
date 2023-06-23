@@ -61,6 +61,9 @@ setPort (P4 fpClient _) port' =
   withCAString port' $ \port ->
     [C.block| void { $fptr-ptr:(ClientApi *fpClient)->SetPort($(char *port)); } |]
 
+setInput :: P4 -> String -> IO ()
+setInput (P4 _ fpUi) = flip withCAString $ \inp -> [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->SetInput($(char *inp)); } |]
+
 init':: P4 -> IO ()
 init' (P4 fpClient fpUi) =
   [C.block| void {
@@ -70,7 +73,6 @@ init' (P4 fpClient fpUi) =
         $fptr-ptr:(HsClientUser *fpUi)->HandleError(&e);
     }
   |]
-
 
 run' ::
   P4 ->
