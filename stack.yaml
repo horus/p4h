@@ -61,6 +61,7 @@ packages:
 # Extra directories used by Stack for building
 extra-include-dirs:
 - ./p4api/include
+- ./cbits/include
 extra-lib-dirs:
 - ./p4api/lib_macos
 #

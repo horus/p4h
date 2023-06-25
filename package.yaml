@@ -54,6 +54,9 @@ frameworks:
 
 library:
   source-dirs: src
+  c-sources:
+  - cbits/hsclientuser.cc
+  - cbits/hsclientapi.cc
 
 executables:
   p4h-exe:
