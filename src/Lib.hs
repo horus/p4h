@@ -1,11 +1,10 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
-module Lib (runP4) where
+module Lib where
 
 import Control.Exception (bracket)
 import Control.Monad (guard, liftM2, unless)
@@ -33,7 +32,15 @@ data P4Env = P4Env
 
 data P4 = P4 (ForeignPtr ClientAPI) (ForeignPtr ClientUser)
 
-C.context (C.cppCtx <> C.baseCtx <> C.fptrCtx <> C.cppTypePairs [("HsClientApi", [t|ClientAPI|]), ("HsClientUser", [t|ClientUser|])])
+C.context
+  ( C.cppCtx
+      <> C.baseCtx
+      <> C.fptrCtx
+      <> C.cppTypePairs
+        [ ("HsClientApi", [t|ClientAPI|]),
+          ("HsClientUser", [t|ClientUser|])
+        ]
+  )
 C.include "<iostream>"
 C.include "hsclientapi.h"
 C.include "hsclientuser.h"

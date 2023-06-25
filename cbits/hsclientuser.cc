@@ -32,26 +32,29 @@ void HsClientUser::OutputError(const char *errBuf)
     err.Set(errBuf);
 }
 
-void HsClientUser::Prompt( const StrPtr &msg, StrBuf &rsp, int noEcho, Error *e )
+void HsClientUser::Prompt(const StrPtr &msg, StrBuf &rsp, int noEcho, Error *e)
 {
     InputData(&rsp, e);
 }
 
 void HsClientUser::InputData(StrBuf *strbuf, Error *e)
 {
-    if (!input) return;
+    if (!input)
+        return;
     strbuf->Set(input);
 }
 
 void HsClientUser::SetInput(char *i)
 {
-    if (NULL != input) free(input);
+    if (NULL != input)
+        free(input);
     input = strdup(i);
 }
 
 void HsClientUser::Finished()
 {
-    if (input) free(input);
+    if (input)
+        free(input);
 }
 
 const char *HsClientUser::GetOutput(void)

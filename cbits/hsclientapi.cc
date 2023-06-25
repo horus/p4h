@@ -2,4 +2,5 @@
 
 HsClientApi::HsClientApi()
 {
+    ClientApi::SetProtocol("specstring", "");
 }

@@ -5,10 +5,10 @@
 
 class HsClientApi : public ClientApi
 {
-	public:
+public:
 	HsClientApi();
 
-	private:
+private:
 	ClientApi client;
 };
 
