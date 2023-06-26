@@ -9,7 +9,6 @@ HsClientUser::HsClientUser()
     foutputMessage = nullptr;
     foutputStat = nullptr;
     foutputText = nullptr;
-    input = 0;
 }
 
 HsClientUser::~HsClientUser()
@@ -24,8 +23,6 @@ HsClientUser::~HsClientUser()
         hs_free_fun_ptr((HsFunPtr)foutputStat);
     if (foutputText != nullptr)
         hs_free_fun_ptr((HsFunPtr)foutputText);
-    if (input != nullptr)
-        free(input);
 }
 
 void HsClientUser::OutputInfo(char level, const char *data)
@@ -65,9 +62,8 @@ void HsClientUser::Prompt(const StrPtr &msg, StrBuf &rsp, int noEcho, Error *e)
 
 void HsClientUser::InputData(StrBuf *strbuf, Error *e)
 {
-    if (!input)
-        return;
-    strbuf->Set(input);
+    if (input.Length() > 0)
+        strbuf->Set(input);
 }
 
 void HsClientUser::SetHandler(const char *method, void (*fout)(const char *))
@@ -104,19 +100,14 @@ void HsClientUser::SetHandler(const char *method, void (*fout)(const char *))
     }
 }
 
-void HsClientUser::SetInput(char *i)
+void HsClientUser::SetInput(const char *i)
 {
-    if (NULL != input)
-        free(input);
-    input = strdup(i);
+    input.Set(i);
 }
 
 void HsClientUser::Finished()
 {
-    if (input) {
-        free(input);
-        input = nullptr;
-    }
+    input.Reset();
 }
 
 void HsClientUser::GetOutput2(const char **m, const char **e)

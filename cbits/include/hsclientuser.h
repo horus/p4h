@@ -4,8 +4,8 @@
 class HsClientUser : public ClientUser
 {
 private:
-	StrBuf msg, err;
-	char *input;
+	StrBuf msg, err, input;
+
 	void (*foutputBinary)(const char *);
 	void (*foutputInfo)(const char *);
 	void (*foutputMessage)(const char *);
@@ -20,7 +20,7 @@ public:
 	void OutputError(const char *errBuf);
 	void InputData(StrBuf *strbuf, Error *e);
 	void Prompt(const StrPtr &msg, StrBuf &rsp, int noEcho, Error *e);
-	void SetInput(char *i);
+	void SetInput(const char *i);
 	void Finished();
 	// helpers
 	void SetHandler(const char *method, void (*fout)(const char *));
