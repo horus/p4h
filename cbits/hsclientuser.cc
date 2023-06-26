@@ -1,4 +1,5 @@
 #include <string>
+#include <cstring>
 #include "p4/clientapi.h"
 #include "HsFFI.h"
 #include "hsclientuser.h"
