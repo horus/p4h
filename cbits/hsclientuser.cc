@@ -1,9 +1,31 @@
 #include "p4/clientapi.h"
+#include "HsFFI.h"
 #include "hsclientuser.h"
 
 HsClientUser::HsClientUser()
 {
+    foutputBinary = nullptr;
+    foutputInfo = nullptr;
+    foutputMessage = nullptr;
+    foutputStat = nullptr;
+    foutputText = nullptr;
     input = 0;
+}
+
+HsClientUser::~HsClientUser()
+{
+    if (foutputBinary != nullptr)
+        hs_free_fun_ptr((HsFunPtr)foutputBinary);
+    if (foutputInfo != nullptr)
+        hs_free_fun_ptr((HsFunPtr)foutputInfo);
+    if (foutputMessage != nullptr)
+        hs_free_fun_ptr((HsFunPtr)foutputMessage);
+    if (foutputStat != nullptr)
+        hs_free_fun_ptr((HsFunPtr)foutputStat);
+    if (foutputText != nullptr)
+        hs_free_fun_ptr((HsFunPtr)foutputText);
+    if (input != nullptr)
+        free(input);
 }
 
 void HsClientUser::OutputInfo(char level, const char *data)
@@ -25,10 +47,14 @@ void HsClientUser::OutputInfo(char level, const char *data)
     }
     msg.Append(data, len);
     msg.Append("\n");
+
+    if (foutputInfo != nullptr)
+        foutputInfo(data);
 };
 
 void HsClientUser::OutputError(const char *errBuf)
 {
+    /* called by HandleError */
     err.Set(errBuf);
 }
 
@@ -44,6 +70,40 @@ void HsClientUser::InputData(StrBuf *strbuf, Error *e)
     strbuf->Set(input);
 }
 
+void HsClientUser::SetHandler(const char *method, void (*fout)(const char *))
+{
+    if (strcmp(method, "outputBinary") == 0)
+    {
+        if (foutputBinary != nullptr)
+            hs_free_fun_ptr((HsFunPtr)foutputBinary);
+        foutputBinary = fout;
+    }
+    if (strcmp(method, "outputInfo") == 0)
+    {
+        if (foutputInfo != nullptr)
+            hs_free_fun_ptr((HsFunPtr)foutputInfo);
+        foutputInfo = fout;
+    }
+    if (strcmp(method, "outputMessage") == 0)
+    {
+        if (foutputMessage != nullptr)
+            hs_free_fun_ptr((HsFunPtr)foutputMessage);
+        foutputMessage = fout;
+    }
+    if (strcmp(method, "outputStat") == 0)
+    {
+        if (foutputStat != nullptr)
+            hs_free_fun_ptr((HsFunPtr)foutputStat);
+        foutputStat = fout;
+    }
+    if (strcmp(method, "outputText") == 0)
+    {
+        if (foutputText != nullptr)
+            hs_free_fun_ptr((HsFunPtr)foutputText);
+        foutputText = fout;
+    }
+}
+
 void HsClientUser::SetInput(char *i)
 {
     if (NULL != input)
@@ -53,33 +113,31 @@ void HsClientUser::SetInput(char *i)
 
 void HsClientUser::Finished()
 {
-    if (input)
+    if (input) {
         free(input);
+        input = nullptr;
+    }
 }
 
-const char *HsClientUser::GetOutput(void)
+void HsClientUser::GetOutput2(const char **m, const char **e)
 {
-    msg.Terminate();
-    const char *p = strdup(msg.Text());
-    msg.Clear();
-    return p;
+    *m = DupOutput(msg);
+    *e = DupOutput(err);
 }
 
-const char *HsClientUser::GetError(void)
+char *HsClientUser::DupOutput(StrBuf &output)
 {
-    err.Terminate();
-    const char *p = strdup(err.Text());
-    err.Clear();
-    return p;
-}
-
-void HsClientUser::GetOutput2(const char **p1, const char **p2)
-{
-    msg.Terminate();
-    *p1 = strdup(msg.Text());
-    msg.Clear();
-
-    err.Terminate();
-    *p2 = strdup(err.Text());
-    err.Clear();
+    /*
+     * XXX: force terminating with nul char and use real strlen of the underlying buffer
+     */
+    output.Terminate();
+    char *src = output.Text();
+    size_t len = strlen(src);
+    char *dst;
+    if ((dst = (char *)malloc(len + 1)) == nullptr)
+        return nullptr;
+    memcpy(dst, src, len);
+    dst[len] = '\0';
+    output.Reset();
+    return dst; // will be freed by the caller
 }

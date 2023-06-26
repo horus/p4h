@@ -4,11 +4,12 @@
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
-module Lib where
+module Lib (runP4) where
 
 import Control.Exception (bracket)
-import Control.Monad (guard, liftM2, unless)
-import Foreign.C.String (newCString, peekCString, withCAString)
+import Control.Monad (guard, liftM2, unless, (>=>))
+import Data.ByteString (ByteString, packCString)
+import Foreign.C.String (newCString, peekCAString, peekCString, withCAString)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr)
 import Foreign.Marshal.Alloc (free)
 import Foreign.Marshal.Array (withArrayLen)
@@ -32,18 +33,38 @@ data P4Env = P4Env
 
 data P4 = P4 (ForeignPtr ClientAPI) (ForeignPtr ClientUser)
 
+data P4Handler
+  = OutputText (String -> IO ())
+  | OutputInfo (String -> IO ())
+  | OutputMessage (String -> IO ())
+  | OutputStat (String -> IO ())
+  | OutputBinary (ByteString -> IO ())
+
+instance Show P4Handler where
+  show (OutputText _) = "outputText"
+  show (OutputInfo _) = "outputInfo"
+  show (OutputMessage _) = "outputMessage"
+  show (OutputStat _) = "outputStat"
+  show (OutputBinary _) = "outputBinary"
+
 C.context
   ( C.cppCtx
       <> C.baseCtx
       <> C.fptrCtx
+      <> C.funCtx
       <> C.cppTypePairs
         [ ("HsClientApi", [t|ClientAPI|]),
           ("HsClientUser", [t|ClientUser|])
         ]
   )
-C.include "<iostream>"
 C.include "hsclientapi.h"
 C.include "hsclientuser.h"
+
+runP4 :: [String] -> IO (Either String String)
+runP4 = flip (runP4Env defaultP4Env) (const $ return ())
+
+defaultP4Env :: P4Env
+defaultP4Env = P4Env Nothing Nothing Nothing Nothing Nothing Nothing
 
 connectEnv :: P4Env -> IO P4
 connectEnv (P4Env user pass host port client input) = do
@@ -60,11 +81,6 @@ connectEnv (P4Env user pass host port client input) = do
     may io (Just a) = io a
     may _ _ = return ()
 
-connect :: IO P4
-connect = connectEnv def
-  where
-    def = P4Env Nothing Nothing Nothing Nothing Nothing Nothing
-
 disconnect :: P4 -> IO ()
 disconnect (P4 fpClient fpUi) =
   [C.block| void {
@@ -75,16 +91,17 @@ disconnect (P4 fpClient fpUi) =
     }
   |]
 
-withP4 :: (P4 -> IO a) -> IO a
-withP4 = bracket connect disconnect
+withP4Env :: P4Env -> (P4 -> IO a) -> IO a
+withP4Env env = bracket (connectEnv env) disconnect
 
-runP4 :: [String] -> IO (Either String String)
-runP4 [] = return $ Left "p4h\n"
-runP4 (subcmd : args) = withP4 $ \p4 ->
+runP4Env :: P4Env -> [String] -> (P4 -> IO ()) -> IO (Either String String)
+runP4Env _ [] _ = return $ Left "p4h\n"
+runP4Env env (subcmd : args) prepare = withP4Env env $ \p4 ->
   withCAString subcmd $ \cmd ->
     bracket (mapM newCString args) (mapM_ free) $ \argv' ->
       withArrayLen argv' $ \argc argv -> do
         unless (argc == 0) $ setArgv p4 (fromIntegral argc) argv
+        prepare p4
         run p4 cmd
         getOutput2 p4
 
@@ -99,6 +116,18 @@ newP4 = do
   fpClient <- newForeignPtr [C.funPtr| void free(HsClientApi *p) { delete p; } |] ptrClient
   fpUi <- newForeignPtr [C.funPtr| void free(HsClientUser *p) { delete p; } |] ptrUi
   return $ P4 fpClient fpUi
+
+setHandler :: P4 -> P4Handler -> IO ()
+setHandler (P4 _ fpUi) handler = do
+  let cout = get handler
+  withCAString (show handler) $ \name ->
+    [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->SetHandler($(const char *name), $fun-alloc:(void (*cout)(const char *))); } |]
+  where
+    get (OutputBinary f) = packCString >=> f
+    get (OutputInfo f) = peekCAString >=> f
+    get (OutputText f) = peekCAString >=> f
+    get (OutputMessage f) = peekCAString >=> f
+    get (OutputStat f) = peekCAString >=> f
 
 setPort :: P4 -> String -> IO ()
 setPort (P4 fpClient _) port' =
@@ -164,7 +193,7 @@ getOutput2 (P4 _ fpUi) = bracket getPtrs freePtrs $ \(msg, err) -> do
   liftM2 ret (peekCString msg) (peekCString err)
   where
     getPtrs = withPtrs_ $ \(msg, err) ->
-      [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->GetOutput2( $(const char **msg), $(const char **err) ); } |]
+      [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->GetOutput2($(const char **msg), $(const char **err)); } |]
     freePtrs (p1, p2) = free p1 >> free p2
     ret a "" = Right a
     ret _ b = Left b

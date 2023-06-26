@@ -6,9 +6,15 @@ class HsClientUser : public ClientUser
 private:
 	StrBuf msg, err;
 	char *input;
+	void (*foutputBinary)(const char *);
+	void (*foutputInfo)(const char *);
+	void (*foutputMessage)(const char *);
+	void (*foutputStat)(const char *);
+	void (*foutputText)(const char *);
 
 public:
 	HsClientUser();
+	~HsClientUser();
 	// override
 	void OutputInfo(char level, const char *data);
 	void OutputError(const char *errBuf);
@@ -17,9 +23,11 @@ public:
 	void SetInput(char *i);
 	void Finished();
 	// helpers
-	const char *GetOutput(void);
-	const char *GetError(void);
-	void GetOutput2(const char **p1, const char **p2);
+	void SetHandler(const char *method, void (*fout)(const char *));
+	void GetOutput2(const char **m, const char **e);
+
+private:
+	char *DupOutput(StrBuf &output);
 };
 
 #endif
