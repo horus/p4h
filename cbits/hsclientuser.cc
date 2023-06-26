@@ -1,3 +1,4 @@
+#include <string>
 #include "p4/clientapi.h"
 #include "HsFFI.h"
 #include "hsclientuser.h"
@@ -27,7 +28,7 @@ HsClientUser::~HsClientUser()
 
 void HsClientUser::OutputInfo(char level, const char *data)
 {
-    size_t len = strlen(data);
+    size_t len = std::strlen(data);
     if (len == 0)
         return;
     switch (level)
@@ -66,33 +67,34 @@ void HsClientUser::InputData(StrBuf *strbuf, Error *e)
         strbuf->Set(input);
 }
 
-void HsClientUser::SetHandler(const char *method, void (*fout)(const char *))
+void HsClientUser::SetHandler(const char *meth, void (*fout)(const char *))
 {
-    if (strcmp(method, "outputBinary") == 0)
+    std::string method(meth);
+    if (method == "outputBinary")
     {
         if (foutputBinary != nullptr)
             hs_free_fun_ptr((HsFunPtr)foutputBinary);
         foutputBinary = fout;
     }
-    if (strcmp(method, "outputInfo") == 0)
+    if (method == "outputInfo")
     {
         if (foutputInfo != nullptr)
             hs_free_fun_ptr((HsFunPtr)foutputInfo);
         foutputInfo = fout;
     }
-    if (strcmp(method, "outputMessage") == 0)
+    if (method == "outputMessage")
     {
         if (foutputMessage != nullptr)
             hs_free_fun_ptr((HsFunPtr)foutputMessage);
         foutputMessage = fout;
     }
-    if (strcmp(method, "outputStat") == 0)
+    if (method == "outputStat")
     {
         if (foutputStat != nullptr)
             hs_free_fun_ptr((HsFunPtr)foutputStat);
         foutputStat = fout;
     }
-    if (strcmp(method, "outputText") == 0)
+    if (method == "outputText")
     {
         if (foutputText != nullptr)
             hs_free_fun_ptr((HsFunPtr)foutputText);
@@ -116,18 +118,18 @@ void HsClientUser::GetOutput2(const char **m, const char **e)
     *e = DupOutput(err);
 }
 
-char *HsClientUser::DupOutput(StrBuf &output)
+const char *HsClientUser::DupOutput(StrBuf &output)
 {
     /*
      * XXX: force terminating with nul char and use real strlen of the underlying buffer
      */
     output.Terminate();
-    char *src = output.Text();
-    size_t len = strlen(src);
+    const char *src = output.Text();
+    std::size_t len = std::strlen(src);
     char *dst;
-    if ((dst = (char *)malloc(len + 1)) == nullptr)
+    if ((dst = (char *)std::malloc(len + 1)) == nullptr)
         return nullptr;
-    memcpy(dst, src, len);
+    std::memcpy(dst, src, len);
     dst[len] = '\0';
     output.Reset();
     return dst; // will be freed by the caller

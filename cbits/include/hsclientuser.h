@@ -23,11 +23,11 @@ public:
 	void SetInput(const char *i);
 	void Finished();
 	// helpers
-	void SetHandler(const char *method, void (*fout)(const char *));
+	void SetHandler(const char *meth, void (*fout)(const char *));
 	void GetOutput2(const char **m, const char **e);
 
 private:
-	char *DupOutput(StrBuf &output);
+	const char *DupOutput(StrBuf &output);
 };
 
 #endif
