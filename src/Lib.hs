@@ -155,11 +155,11 @@ setClient (P4 fpClient _) client' =
     [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetClient($(const char *client)); } |]
 
 setInput :: P4 -> String -> IO ()
-setInput (P4 _ fpUi) = flip withCAString $ \inp -> [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->SetInput($(char *inp)); } |]
+setInput (P4 _ fpUi) = flip withCAString $ \inp -> [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->SetInput($(const char *inp)); } |]
 
 setArgv :: P4 -> C.CInt -> Ptr (Ptr C.CChar) -> IO ()
 setArgv (P4 fpClient _) argc argv =
-  [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetArgv($(int argc), $(char **argv)); } |]
+  [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetArgv($(int argc), $(char *const *argv)); } |]
 
 init :: P4 -> IO ()
 init (P4 fpClient fpUi) =
