@@ -119,15 +119,15 @@ newP4 = do
 
 setHandler :: P4 -> P4Handler -> IO ()
 setHandler (P4 _ fpUi) handler = do
-  let cout = get handler
+  let out = get handler
   withCAString (show handler) $ \name ->
-    [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->SetHandler($(const char *name), $fun-alloc:(void (*cout)(const char *))); } |]
+    [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->SetHandler($(const char *name), $fun-alloc:(void (*out)(const char *))); } |]
   where
-    get (OutputBinary f) = packCString >=> f
-    get (OutputInfo f) = peekCAString >=> f
-    get (OutputText f) = peekCAString >=> f
-    get (OutputMessage f) = peekCAString >=> f
-    get (OutputStat f) = peekCAString >=> f
+    get (OutputBinary h) = packCString >=> h
+    get (OutputInfo h) = peekCAString >=> h
+    get (OutputText h) = peekCAString >=> h
+    get (OutputMessage h) = peekCAString >=> h
+    get (OutputStat h) = peekCAString >=> h
 
 setPort :: P4 -> String -> IO ()
 setPort (P4 fpClient _) port' =
