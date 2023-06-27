@@ -130,8 +130,7 @@ const char *HsClientUser::DupOutput(StrBuf &output)
     char *dst;
     if ((dst = (char *)std::malloc(len + 1)) == nullptr)
         return nullptr;
-    std::memcpy(dst, src, len);
-    dst[len] = '\0';
+    std::memcpy(dst, src, len + 1);
     output.Reset();
     return dst; // will be freed by the caller
 }
