@@ -27,8 +27,7 @@ data P4Env = P4Env
     p4password :: Maybe String,
     p4host :: Maybe String,
     p4port :: Maybe String,
-    p4client :: Maybe String,
-    p4input :: Maybe String
+    p4client :: Maybe String
   }
 
 data P4 = P4 (ForeignPtr ClientAPI) (ForeignPtr ClientUser)
@@ -64,17 +63,16 @@ runP4 :: [String] -> IO (Either String String)
 runP4 = flip (runP4Env defaultP4Env) (const $ return ())
 
 defaultP4Env :: P4Env
-defaultP4Env = P4Env Nothing Nothing Nothing Nothing Nothing Nothing
+defaultP4Env = P4Env Nothing Nothing Nothing Nothing Nothing
 
 connectEnv :: P4Env -> IO P4
-connectEnv (P4Env user pass host port client input) = do
+connectEnv (P4Env user pass host port client) = do
   p4 <- newP4
-  may (setUser p4) user
-  may (setPassword p4) pass
-  may (setHost p4) host
-  may (setPort p4) port
   may (setClient p4) client
-  may (setInput p4) input
+  may (setHost p4) host
+  may (setPassword p4) pass
+  may (setPort p4) port
+  may (setUser p4) user
   init p4
   return p4
   where
@@ -96,14 +94,10 @@ withP4Env env = bracket (connectEnv env) disconnect
 
 runP4Env :: P4Env -> [String] -> (P4 -> IO ()) -> IO (Either String String)
 runP4Env _ [] _ = return $ Left "p4h\n"
-runP4Env env (subcmd : args) prepare = withP4Env env $ \p4 ->
-  withCAString subcmd $ \cmd ->
-    bracket (mapM newCString args) (mapM_ free) $ \argv' ->
-      withArrayLen argv' $ \argc argv -> do
-        unless (argc == 0) $ setArgv p4 (fromIntegral argc) argv
-        prepare p4
-        run p4 cmd
-        getOutput2 p4
+runP4Env env (cmd' : args) prepare =
+  withP4Env env $ \p4 ->
+    withCAString cmd' $ \cmd ->
+      prepare p4 >> setArgv p4 args >> run p4 cmd >> getOutput2 p4
 
 newP4 :: IO P4
 newP4 = do
@@ -157,9 +151,23 @@ setClient (P4 fpClient _) client' =
 setInput :: P4 -> String -> IO ()
 setInput (P4 _ fpUi) = flip withCAString $ \inp -> [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->SetInput($(const char *inp)); } |]
 
-setArgv :: P4 -> C.CInt -> Ptr (Ptr C.CChar) -> IO ()
-setArgv (P4 fpClient _) argc argv =
-  [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetArgv($(int argc), $(char *const *argv)); } |]
+setArgv :: P4 -> [String] -> IO ()
+setArgv (P4 fpClient _) args =
+  unless (null args) $
+    bracket (mapM newCString args) (mapM_ free) $ \argv' ->
+      withArrayLen argv' $ \argc' argv -> do
+        let argc = fromIntegral argc'
+        [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetArgv($(int argc), $(char *const *argv)); } |]
+
+setProg :: P4 -> String -> IO ()
+setProg (P4 fpClient _) prog' =
+  withCAString prog' $ \prog ->
+    [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetProg($(const char *prog)); } |]
+
+setVersion :: P4 -> String -> IO ()
+setVersion (P4 fpClient _) version' =
+  withCAString version' $ \version ->
+    [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetVersion($(const char *version)); } |]
 
 init :: P4 -> IO ()
 init (P4 fpClient fpUi) =
