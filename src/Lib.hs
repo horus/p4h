@@ -11,11 +11,12 @@ import Control.Monad (guard, liftM2, unless, (>=>))
 import Data.ByteString (ByteString, packCString)
 import Foreign.C.String (newCString, peekCAString, peekCString, withCAString)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr)
-import Foreign.Marshal (maybePeek)
+import Foreign.Marshal (maybePeek, toBool)
 import Foreign.Marshal.Alloc (free)
 import Foreign.Marshal.Array (withArrayLen)
-import Foreign.Ptr (Ptr, nullPtr)
+import Foreign.Ptr (nullPtr)
 import qualified Language.C.Inline.Cpp as C
+import System.Console.ANSI
 import Prelude hiding (init)
 
 data ClientAPI
@@ -59,12 +60,12 @@ C.context
 C.include "hsclientapi.h"
 C.include "hsclientuser.h"
 
-runP4 :: [String] -> IO (Either String String)
-runP4 args' = runP4Env defaultP4Env args (const $ return ()) getOutput2
-  where
-    args
-      | null args' = ["help"]
-      | otherwise = args'
+runP4 :: [String] -> IO ()
+runP4 = runP4Env defaultP4Env >=> either (colored Red) (colored Green)
+
+runP4Env :: P4Env -> [String] -> IO (Either String String)
+runP4Env _ [] = return $ Left "p4h\n"
+runP4Env env (cmd : arg) = withP4Env env $ \p4 -> setArgv p4 arg >> run p4 cmd >> getOutput2 p4
 
 defaultP4Env :: P4Env
 defaultP4Env = P4Env Nothing Nothing Nothing Nothing Nothing
@@ -80,8 +81,7 @@ connectEnv (P4Env user pass host port client) = do
   init p4
   return p4
   where
-    may io (Just a) = io a
-    may _ _ = return ()
+    may = maybe (return ())
 
 disconnect :: P4 -> IO ()
 disconnect (P4 fpClient fpUi) =
@@ -95,13 +95,6 @@ disconnect (P4 fpClient fpUi) =
 
 withP4Env :: P4Env -> (P4 -> IO a) -> IO a
 withP4Env env = bracket (connectEnv env) disconnect
-
-runP4Env :: P4Env -> [String] -> (P4 -> IO ()) -> (P4 -> IO a) -> IO a
-runP4Env _ [] _ _ = error "empty command"
-runP4Env env (cmd' : args) before after =
-  withP4Env env $ \p4 ->
-    withCAString cmd' $ \cmd ->
-      before p4 >> setArgv p4 args >> run p4 cmd >> after p4
 
 newP4 :: IO P4
 newP4 = do
@@ -179,6 +172,9 @@ getProtocol (P4 fpClient _) var = withCAString var $ \p -> do
     |]
   maybePeek peekCAString pv
 
+dropped :: P4 -> IO Bool
+dropped (P4 fpClient _) = toBool <$> [C.block| int { return $fptr-ptr:(HsClientApi *fpClient)->Dropped(); } |]
+
 init :: P4 -> IO ()
 init (P4 fpClient fpUi) =
   [C.block| void {
@@ -189,21 +185,9 @@ init (P4 fpClient fpUi) =
     }
   |]
 
-run ::
-  P4 ->
-  Ptr C.CChar ->
-  IO ()
-run (P4 fpClient fpUi) cmd =
-  [C.block| void {
-      HsClientUser *ui = $fptr-ptr:(HsClientUser *fpUi);
-      HsClientApi *client = $fptr-ptr:(HsClientApi *fpClient);
-      client->Run($(const char *cmd), ui);
-      Error e;
-      client->Final(&e);
-      if (e.Test())
-        ui->HandleError(&e);
-    }
-  |]
+run :: P4 -> String -> IO ()
+run (P4 fpClient fpUi) cmd' = withCAString cmd' $ \cmd ->
+  [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Run($(const char *cmd), $fptr-ptr:(HsClientUser *fpUi)); } |]
 
 getOutput2 :: P4 -> IO (Either String String)
 getOutput2 (P4 _ fpUi) = bracket getPtrs freePtrs $ \(msg, err) -> do
@@ -215,3 +199,9 @@ getOutput2 (P4 _ fpUi) = bracket getPtrs freePtrs $ \(msg, err) -> do
     freePtrs (p1, p2) = free p1 >> free p2
     ret a "" = Right a
     ret _ b = Left b
+
+colored :: Color -> String -> IO ()
+colored clr txt = do
+  setSGR [SetColor Foreground Vivid clr]
+  putStr txt
+  setSGR [Reset]

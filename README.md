@@ -8,27 +8,38 @@ If you have both Haskell and C++ expertise please help.
 
 ## Examples
 
+An alternative version of [this](https://www.perforce.com/manuals/p4api/Content/P4API/clientapi.dropped.html#clientapi.dropped.example) example:
+
 ```haskell
-example = runP4Env env ["login", "-as", "super"] $ \p4 -> do
+example :: IO ()
+example = withP4Env env $ \p4 -> do
   setProg p4 "unnamed haskell script"
   setVersion p4 "2023.06"
-  -- setInput p4 "my-super-password"
+  setInput p4 "my-super-password"
   setHandler p4 (OutputInfo $ putStrLn . ("[Info] " ++))
+  run p4 "login"
+  showOutput p4
+  let loop i = do
+        connDropped <- dropped p4
+        unless (connDropped || i > 9) $ do
+          putStrLn $ "loop #" ++ show i
+          run p4 "have"
+          showOutput p4
+          loop (i+1)
+  loop 0
   where
-    env = P4Env Nothing Nothing Nothing (Just "tcp:1666") Nothing
+    env = P4Env (Just "super") Nothing (Just "localhost") (Just "tcp:1666") (Just "my-workspace")
 ```
 
-... would leave a trace in the server log `commands.csv` as:
+... would print something similiar to:
 
 ```
-2.56,1687838320,413824960,2023/06/27 11:58:40 413824960,89388,-,master,1,super,local,user-login,127.0.0.1,unnamed haskell script,2023.06,-as:super,,.017s,,21,21,.000s
-```
-
-and print something similiar to:
-
-```
-[Info] User super ticket expires in 11 hours 57 minutes.
-[Info] User super on host 127.0.0.1: Ticket: Unset
+[Info] User super logged in.
+User super logged in.
+loop #0
+[Info] //depot/test.txt#45 - /workspace/depot/test.txt
+//depot/test.txt#45 - /workspace/depot/test.txt
+... ...
 ```
 
 ## Rationale
