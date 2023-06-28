@@ -37,14 +37,6 @@ ghc-options:
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -Wredundant-constraints
-- -optcxx-std=c++11
-- -optcxx-Wall
-- -optl-lclient
-- -optl-lp4api
-- -optl-lrpc
-- -optl-lssl
-- -optl-lcrypto
-- -optl-lsupp
 
 library:
   source-dirs: src
@@ -52,7 +44,7 @@ library:
   - cbits/hsclientuser.cc
   - cbits/hsclientapi.cc
   cxx-options:
-  - -DP4API_VERSION=513538
+  - -DP4API_VERSION=513538 -std=c++11 -Wall
 
 executables:
   p4h-exe:
@@ -62,6 +54,12 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -optl-lclient
+    - -optl-lp4api
+    - -optl-lrpc
+    - -optl-lssl
+    - -optl-lcrypto
+    - -optl-lsupp
     when:
     - condition: os(linux)
       ghc-options:
