@@ -1,6 +1,8 @@
 #ifndef _HS_CLIENT_USER_H
 #define _HS_CLIENT_USER_H
 
+class SpecMgr;
+
 class HsClientUser : public ClientUser
 {
 private:
@@ -13,7 +15,7 @@ private:
 	void (*foutputText)(const char *);
 
 public:
-	HsClientUser();
+	HsClientUser(SpecMgr *s);
 	~HsClientUser();
 	// override
 	void OutputInfo(char level, const char *data);
@@ -28,6 +30,7 @@ public:
 
 private:
 	const char *DupOutput(StrBuf &output);
+	SpecMgr *specMgr;
 };
 
 #endif

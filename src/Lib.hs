@@ -21,8 +21,6 @@ import Prelude hiding (init)
 
 data ClientAPI
 
-data ClientUser
-
 data P4Env = P4Env
   { p4user :: Maybe String,
     p4password :: Maybe String,
@@ -31,7 +29,7 @@ data P4Env = P4Env
     p4client :: Maybe String
   }
 
-data P4 = P4 (ForeignPtr ClientAPI) (ForeignPtr ClientUser)
+newtype P4 = P4 (ForeignPtr ClientAPI)
 
 data P4Handler
   = OutputText (String -> IO ())
@@ -52,20 +50,17 @@ C.context
       <> C.baseCtx
       <> C.fptrCtx
       <> C.funCtx
-      <> C.cppTypePairs
-        [ ("HsClientApi", [t|ClientAPI|]),
-          ("HsClientUser", [t|ClientUser|])
-        ]
+      <> C.cppTypePairs [("HsClientApi", [t|ClientAPI|])]
   )
+
 C.include "hsclientapi.h"
-C.include "hsclientuser.h"
 
 runP4 :: [String] -> IO ()
 runP4 = runP4Env defaultP4Env >=> either (colored Red) (colored Green)
 
 runP4Env :: P4Env -> [String] -> IO (Either String String)
 runP4Env _ [] = return $ Left "p4h\n"
-runP4Env env (cmd : arg) = withP4Env env $ \p4 -> setArgv p4 arg >> run p4 cmd >> getOutput2 p4
+runP4Env env (cmd : arg) = withP4Env env $ \p4 -> setHandler p4 (OutputInfo $ putStrLn . ("[info] " ++)) >> setArgv p4 arg >> run p4 cmd >> getOutput2 p4
 
 defaultP4Env :: P4Env
 defaultP4Env = P4Env Nothing Nothing Nothing Nothing Nothing
@@ -78,41 +73,28 @@ connectEnv (P4Env user pass host port client) = do
   may (setPassword p4) pass
   may (setPort p4) port
   may (setUser p4) user
-  init p4
+  connect p4
   return p4
   where
     may = maybe (return ())
 
 disconnect :: P4 -> IO ()
-disconnect (P4 fpClient fpUi) =
-  [C.block| void {
-      Error e;
-      $fptr-ptr:(HsClientApi *fpClient)->Final(&e);
-      if (e.Test())
-        $fptr-ptr:(HsClientUser *fpUi)->HandleError(&e);
-    }
-  |]
+disconnect (P4 fpClient) = [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Disconnect(); } |]
 
 withP4Env :: P4Env -> (P4 -> IO a) -> IO a
 withP4Env env = bracket (connectEnv env) disconnect
 
 newP4 :: IO P4
 newP4 = do
-  (ptrUi, ptrClient) <- C.withPtrs_ $ \(ui, client) ->
-    [C.block| void {
-          *$(HsClientUser **ui) = new HsClientUser();
-          *$(HsClientApi **client) = new HsClientApi();
-          }
-    |]
-  fpClient <- newForeignPtr [C.funPtr| void free(HsClientApi *p) { delete p; } |] ptrClient
-  fpUi <- newForeignPtr [C.funPtr| void free(HsClientUser *p) { delete p; } |] ptrUi
-  return $ P4 fpClient fpUi
+  ptrClient <- [C.exp| HsClientApi* { new HsClientApi } |]
+  let finalizer = [C.funPtr| void free(HsClientApi *p) { delete p; } |]
+  P4 <$> newForeignPtr finalizer ptrClient
 
 setHandler :: P4 -> P4Handler -> IO ()
-setHandler (P4 _ fpUi) handler = do
+setHandler (P4 fpClient) handler = do
   let out = get handler
   withCAString (show handler) $ \name ->
-    [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->SetHandler($(const char *name), $fun-alloc:(void (*out)(const char *))); } |]
+    [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetHandler($(const char *name), $fun-alloc:(void (*out)(const char *))); } |]
   where
     get (OutputBinary h) = packCString >=> h
     get (OutputInfo h) = peekCAString >=> h
@@ -121,49 +103,49 @@ setHandler (P4 _ fpUi) handler = do
     get (OutputStat h) = peekCAString >=> h
 
 setPort :: P4 -> String -> IO ()
-setPort (P4 fpClient _) port' = withCAString port' $ \port ->
+setPort (P4 fpClient) port' = withCAString port' $ \port ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetPort($(const char *port)); } |]
 
 setUser :: P4 -> String -> IO ()
-setUser (P4 fpClient _) user' = withCAString user' $ \user ->
+setUser (P4 fpClient) user' = withCAString user' $ \user ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetUser($(const char *user)); } |]
 
 setPassword :: P4 -> String -> IO ()
-setPassword (P4 fpClient _) password' = withCAString password' $ \password ->
+setPassword (P4 fpClient) password' = withCAString password' $ \password ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetPassword($(const char *password)); } |]
 
 setHost :: P4 -> String -> IO ()
-setHost (P4 fpClient _) host' = withCAString host' $ \host ->
+setHost (P4 fpClient) host' = withCAString host' $ \host ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetHost($(const char *host)); } |]
 
 setClient :: P4 -> String -> IO ()
-setClient (P4 fpClient _) client' = withCAString client' $ \client ->
+setClient (P4 fpClient) client' = withCAString client' $ \client ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetClient($(const char *client)); } |]
 
 setInput :: P4 -> String -> IO ()
-setInput (P4 _ fpUi) inp' = withCAString inp' $ \inp ->
-  [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->SetInput($(const char *inp)); } |]
+setInput (P4 fpClient) inp' = withCAString inp' $ \inp ->
+  [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetInput($(const char *inp)); } |]
 
 setArgv :: P4 -> [String] -> IO ()
-setArgv (P4 fpClient _) args = unless (null args) $
+setArgv (P4 fpClient) args = unless (null args) $
   bracket (mapM newCString args) (mapM_ free) $ \argv' -> withArrayLen argv' $ \argc' argv -> do
     let argc = fromIntegral argc'
     [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetArgv($(int argc), $(char *const *argv)); } |]
 
 setProg :: P4 -> String -> IO ()
-setProg (P4 fpClient _) prog' = withCAString prog' $ \prog ->
+setProg (P4 fpClient) prog' = withCAString prog' $ \prog ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetProg($(const char *prog)); } |]
 
 setVersion :: P4 -> String -> IO ()
-setVersion (P4 fpClient _) version' = withCAString version' $ \version ->
+setVersion (P4 fpClient) version' = withCAString version' $ \version ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetVersion($(const char *version)); } |]
 
 setProtocol :: P4 -> String -> String -> IO ()
-setProtocol (P4 fpClient _) var val = withCAString var $ \p -> withCAString val $ \v ->
+setProtocol (P4 fpClient) var val = withCAString var $ \p -> withCAString val $ \v ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetProtocol($(const char *p), $(const char *v)); } |]
 
 getProtocol :: P4 -> String -> IO (Maybe String)
-getProtocol (P4 fpClient _) var = withCAString var $ \p -> do
+getProtocol (P4 fpClient) var = withCAString var $ \p -> do
   pv <-
     [C.block| const char * { 
         StrPtr *pv = $fptr-ptr:(HsClientApi *fpClient)->GetProtocol($(const char *p));
@@ -173,29 +155,22 @@ getProtocol (P4 fpClient _) var = withCAString var $ \p -> do
   maybePeek peekCAString pv
 
 dropped :: P4 -> IO Bool
-dropped (P4 fpClient _) = toBool <$> [C.block| int { return $fptr-ptr:(HsClientApi *fpClient)->Dropped(); } |]
+dropped (P4 fpClient) = toBool <$> [C.block| int { return $fptr-ptr:(HsClientApi *fpClient)->Dropped(); } |]
 
-init :: P4 -> IO ()
-init (P4 fpClient fpUi) =
-  [C.block| void {
-      Error e;
-      $fptr-ptr:(HsClientApi *fpClient)->Init(&e);
-      if(e.Test())
-        $fptr-ptr:(HsClientUser *fpUi)->HandleError(&e);
-    }
-  |]
+connect :: P4 -> IO ()
+connect (P4 fpClient) = [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Connect(); } |]
 
 run :: P4 -> String -> IO ()
-run (P4 fpClient fpUi) cmd' = withCAString cmd' $ \cmd ->
-  [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Run($(const char *cmd), $fptr-ptr:(HsClientUser *fpUi)); } |]
+run (P4 fpClient) cmd' = withCAString cmd' $ \cmd ->
+  [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Run($(const char *cmd)); } |]
 
 getOutput2 :: P4 -> IO (Either String String)
-getOutput2 (P4 _ fpUi) = bracket getPtrs freePtrs $ \(msg, err) -> do
+getOutput2 (P4 fpClient) = bracket getPtrs freePtrs $ \(msg, err) -> do
   guard (msg /= nullPtr && err /= nullPtr)
   liftM2 ret (peekCString msg) (peekCString err)
   where
     getPtrs = C.withPtrs_ $ \(msg, err) ->
-      [C.block| void { $fptr-ptr:(HsClientUser *fpUi)->GetOutput2($(const char **msg), $(const char **err)); } |]
+      [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->GetOutput2($(const char **msg), $(const char **err)); } |]
     freePtrs (p1, p2) = free p1 >> free p2
     ret a "" = Right a
     ret _ b = Left b

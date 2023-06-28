@@ -4,13 +4,14 @@
 #include "HsFFI.h"
 #include "hsclientuser.h"
 
-HsClientUser::HsClientUser()
+HsClientUser::HsClientUser(SpecMgr *s)
 {
     foutputBinary = nullptr;
     foutputInfo = nullptr;
     foutputMessage = nullptr;
     foutputStat = nullptr;
     foutputText = nullptr;
+    specMgr = s;
 }
 
 HsClientUser::~HsClientUser()
@@ -25,6 +26,7 @@ HsClientUser::~HsClientUser()
         hs_free_fun_ptr((HsFunPtr)foutputStat);
     if (foutputText != nullptr)
         hs_free_fun_ptr((HsFunPtr)foutputText);
+    specMgr = nullptr;
 }
 
 void HsClientUser::OutputInfo(char level, const char *data)
