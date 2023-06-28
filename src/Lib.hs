@@ -13,7 +13,7 @@ import Foreign.C.String (newCString, peekCAString, peekCString, withCAString)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr)
 import Foreign.Marshal (maybePeek, toBool)
 import Foreign.Marshal.Alloc (free)
-import Foreign.Marshal.Array (withArrayLen)
+import Foreign.Marshal.Array (peekArray, withArrayLen)
 import Foreign.Ptr (nullPtr)
 import qualified Language.C.Inline.Cpp as C
 import System.Console.ANSI
@@ -174,6 +174,16 @@ getOutput2 (P4 fpClient) = bracket getPtrs freePtrs $ \(msg, err) -> do
     freePtrs (p1, p2) = free p1 >> free p2
     ret a "" = Right a
     ret _ b = Left b
+
+parseSpec :: P4 -> String -> String -> IO [(String, String)]
+parseSpec (P4 fpClient) typ' form' = withCAString typ' $ \typ -> withCAString form' $ \form -> do
+  (k, v, i) <- C.withPtrs_ $ \(k, v, i) ->
+    [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->ParseSpec($(const char *typ), $(const char *form), $(const char ***k), $(const char ***v), $(int *i)); } |]
+  let len = fromIntegral i
+  dict <- liftM2 zip (process k len) (process v len)
+  free k >> free v >> return dict
+  where
+    process arr len = bracket (peekArray len arr) (mapM_ free) (mapM peekCAString)
 
 colored :: Color -> String -> IO ()
 colored clr txt = do

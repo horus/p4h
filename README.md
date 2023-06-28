@@ -42,6 +42,19 @@ loop #0
 ... ...
 ```
 
+Spec parsing example:
+
+```haskell
+parseSpec p4 "user" "User:   super\nEmail:  super@example.org\nUpdate: 2023/06/09 17:59:33\nAccess: 2023/06/28 17:35:45\nFullName:       super\n"
+```
+...this would mostly output the following:
+
+```
+[("user","User"),("type","Type"),("email","Email"),("update","Update"),("access","Access"),("fullname","FullName"),("jobview","JobView"),("password","Password"),("authmethod","AuthMethod"),("reviews","Reviews"),("User","super"),("Email","super@example.org"),("Update","2023/06/09 17:59:33"),("Access","2023/06/28 17:35:45"),("FullName","super")]
+```
+
+...however I'm still experimenting.
+
 ## Rationale
 
 > The Helix Server protocol is not designed to support multiple concurrent queries over the same connection. Multithreaded applications that use the C++ API or derived APIs should ensure that a separate connection is used for each thread, or that only one thread may use a shared connection at a time.

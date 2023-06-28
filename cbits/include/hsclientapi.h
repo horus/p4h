@@ -5,6 +5,7 @@
 #include "specmgr.h"
 #include "hsclientapi.h"
 #include "hsclientuser.h"
+#include <vector>
 
 class HsClientApi
 {
@@ -13,7 +14,7 @@ public:
 	~HsClientApi();
 
 public:
-	void ParseSpec(const char *type, const char *form);
+	void ParseSpec(const char *type, const char *form, const char ***k, const char ***v, int *len);
 	void Connect();
 	void Disconnect();
 	bool Dropped() { return client.Dropped(); }
@@ -31,6 +32,9 @@ public:
 	void SetVersion(const char *v) { client.SetVersion(v); }
 	void SetHandler(const char *meth, void (*fout)(const char *)) { ui.SetHandler(meth, fout); }
 	void GetOutput2(const char **msg, const char **err) { ui.GetOutput2(msg, err); }
+
+private:
+	const char **CopySv(std::vector<StrRef> &vec);
 
 private:
 	ClientApi client;

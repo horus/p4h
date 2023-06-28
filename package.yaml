@@ -43,6 +43,8 @@ library:
   cxx-sources:
   - cbits/hsclientuser.cc
   - cbits/hsclientapi.cc
+  - cbits/hsspecdata.cpp
+  - cbits/specmgr.cpp
   cxx-options:
   - -DP4API_VERSION=513538 -std=c++11 -Wall
 
