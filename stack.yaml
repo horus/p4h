@@ -62,8 +62,6 @@ packages:
 extra-include-dirs:
 - ./p4api/include
 - ./cbits/include
-extra-lib-dirs:
-- ./p4api/lib_macos
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor

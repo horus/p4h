@@ -52,6 +52,6 @@ That's what the document says, so I go create a new connection every time.
 
 Download the Helix Core C/C++ API [here](https://www.perforce.com/downloads/helix-core-c/c-api).
 
-While `p4api/include` may contain the up-to-date version of the header files, feel free to replace them. You also need to put the libs into the corresponding directory, check `extra-lib-dirs` in `stack.yaml`.
+While `p4api/include` may contain the up-to-date version of the header files, feel free to replace them. You also need to put the libs into the corresponding directory, check `extra-lib-dirs` in `package.yaml`.
 
-__Note__: I can't simply tell which OS it is, check [stack#2048](https://github.com/commercialhaskell/stack/issues/2048) and [stack#3369](https://github.com/commercialhaskell/stack/issues/3369).
+__Note__ (for macOS): Don't forget to add the directory where `libssl` is located.

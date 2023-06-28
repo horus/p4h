@@ -39,8 +39,6 @@ ghc-options:
 - -Wredundant-constraints
 - -optcxx-std=c++11
 - -optcxx-Wall
-#- -optl-Wl,--allow-multiple-definition
-#- -optl-Wl,-L/usr/local/lib
 - -optl-lclient
 - -optl-lp4api
 - -optl-lrpc
@@ -48,16 +46,13 @@ ghc-options:
 - -optl-lcrypto
 - -optl-lsupp
 
-frameworks:
-- Foundation
-- AppKit
-- Security
-
 library:
   source-dirs: src
-  c-sources:
+  cxx-sources:
   - cbits/hsclientuser.cc
   - cbits/hsclientapi.cc
+  cxx-options:
+  - -DP4API_VERSION=513538
 
 executables:
   p4h-exe:
@@ -67,6 +62,19 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    when:
+    - condition: os(linux)
+      ghc-options:
+      - -optl-Wl,--allow-multiple-definition
+      extra-lib-dirs:
+      - ./p4api/lib_linux
+    - condition: os(darwin)
+      extra-lib-dirs:
+      - ./p4api/lib_macos
+      frameworks:
+      - Foundation
+      - AppKit
+      - Security
     dependencies:
     - p4h
 
