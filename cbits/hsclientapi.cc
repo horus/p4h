@@ -3,11 +3,19 @@
 HsClientApi::HsClientApi() : ui(&specMgr)
 {
     // Enable form parsing
+    InitFlags();
+    server2 = 0;
     client.SetProtocol("specstring", "");
 }
 
 HsClientApi::~HsClientApi()
 {
+    if (IsConnected())
+    {
+        Error e;
+        client.Final(&e); // Ignore errors
+        ResetFlags();
+    }
 }
 
 void HsClientApi::ParseSpec(const char *type, const char *form, const char ***pk, const char ***pv, int *len)
@@ -63,17 +71,65 @@ const char **HsClientApi::CopySv(std::vector<StrRef> &vec)
 
 void HsClientApi::Connect()
 {
+    if (IsConnected())
+        return;
+    ResetFlags();
     Error e;
     client.Init(&e);
     if (e.Test())
+    {
         ui.HandleError(&e);
+        return;
+    }
+    SetConnected();
 }
 
 void HsClientApi::Disconnect()
 {
+    if (!IsConnected())
+        return;
     Error e;
     client.Final(&e);
+    ResetFlags();
     if (e.Test())
         ui.HandleError(&e);
     specMgr.Reset();
+}
+
+bool HsClientApi::Dropped()
+{
+    if (IsConnected() && !client.Dropped())
+        return false;
+    if (IsConnected())
+        Disconnect();
+    return true;
+}
+
+void HsClientApi::Run(const char *cmd, const char **msg, const char **err)
+{
+    if (IsConnected())
+    {
+        client.Run(cmd, &ui);
+        if (!IsCmdRun())
+        {
+            // Have to request server2 protocol *after* a command has been run. I
+            // don't know why, but that's the way it is.
+            StrPtr *pv;
+            if (pv = client.GetProtocol("server2"))
+                server2 = pv->Atoi();
+            if (pv = client.GetProtocol(P4Tag::v_nocase))
+                SetCaseFold();
+            if (pv = client.GetProtocol(P4Tag::v_unicode))
+                if (pv->Atoi())
+                    SetUnicode();
+        }
+        SetCmdRun();
+    }
+    else
+    {
+        Error e;
+        e.Set(E_FAILED, "server not connected");
+        ui.HandleError(&e);
+    }
+    ui.GetOutput2(msg, err);
 }

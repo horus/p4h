@@ -17,14 +17,12 @@ example = withP4Env env $ \p4 -> do
   setVersion p4 "2023.06"
   setInput p4 "my-super-password"
   setHandler p4 (OutputInfo $ putStrLn . ("[Info] " ++))
-  run p4 "login"
-  showOutput p4
+  run p4 "login" >>= print
   let loop i = do
-        connDropped <- dropped p4
-        unless (connDropped || i > 9) $ do
+        isDropped <- dropped p4
+        unless (isDropped || i > 9) $ do
           putStrLn $ "loop #" ++ show i
-          run p4 "have"
-          showOutput p4
+          run p4 "have" >>= print
           loop (i+1)
   loop 0
   where
@@ -40,6 +38,21 @@ loop #0
 [Info] //depot/test.txt#45 - /workspace/depot/test.txt
 //depot/test.txt#45 - /workspace/depot/test.txt
 ... ...
+```
+
+In order to run p4 commands, please use the following pattern:
+
+```haskell
+withP4Env env $ \p4 -> do
+  ... -- other settings here
+  setArgv p4 ["arg1", "arg2", ...]
+  output <- run p4 "cmd"
+  case output of
+    Left err -> handle err
+    Right ... -> ...
+  ... -- do other stuff
+  where
+    env = P4Env client host password port user -- settings
 ```
 
 ### Spec parsing

@@ -164,18 +164,16 @@ dropped (P4 fpClient) = toBool <$> [C.block| int { return $fptr-ptr:(HsClientApi
 connect :: P4 -> IO ()
 connect (P4 fpClient) = [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Connect(); } |]
 
-run :: P4 -> String -> IO ()
-run (P4 fpClient) cmd' = withCAString cmd' $ \cmd ->
-  [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Run($(const char *cmd)); } |]
-
-getOutput2 :: P4 -> IO (Either String String)
-getOutput2 (P4 fpClient) = bracket getPtrs freePtrs $ \(msg, err) -> do
+run :: P4 -> String -> IO (Either String String)
+run (P4 fpClient) cmd' = do
+  (msg, err) <- C.withPtrs_ $ \(msg, err) ->
+    withCAString cmd' $ \cmd ->
+      [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Run($(const char *cmd), $(const char **msg), $(const char **err)); } |]
   guard (msg /= nullPtr && err /= nullPtr)
-  liftM2 ret (peekCString msg) (peekCString err)
+  val <- liftM2 ret (peekCString msg) (peekCString err)
+  free msg >> free err
+  return val
   where
-    getPtrs = C.withPtrs_ $ \(msg, err) ->
-      [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->GetOutput2($(const char **msg), $(const char **err)); } |]
-    freePtrs (p1, p2) = free p1 >> free p2
     ret a "" = Right a
     ret _ b = Left b
 
