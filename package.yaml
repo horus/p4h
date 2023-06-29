@@ -46,7 +46,7 @@ library:
   - cbits/hsspecdata.cpp
   - cbits/specmgr.cpp
   cxx-options:
-  - -DP4API_VERSION=513538 -std=c++11 -Wall
+  - -DP4API_VERSION=2442900 -std=c++11 -Wall # p4api version: 2023.1/2442900
 
 executables:
   p4h-exe:

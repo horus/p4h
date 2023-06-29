@@ -9,6 +9,8 @@ module Lib (runP4) where
 import Control.Exception (bracket)
 import Control.Monad (guard, liftM2, unless, (>=>))
 import Data.ByteString (ByteString, packCString)
+import Data.Char (isDigit, toLower)
+import Data.Foldable (foldl')
 import Foreign.C.String (newCString, peekCAString, peekCString, withCAString)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr)
 import Foreign.Marshal (maybePeek, toBool)
@@ -17,7 +19,6 @@ import Foreign.Marshal.Array (peekArray, withArrayLen)
 import Foreign.Ptr (nullPtr)
 import qualified Language.C.Inline.Cpp as C
 import System.Console.ANSI
-import Prelude hiding (init)
 
 data ClientAPI
 
@@ -175,15 +176,40 @@ getOutput2 (P4 fpClient) = bracket getPtrs freePtrs $ \(msg, err) -> do
     ret a "" = Right a
     ret _ b = Left b
 
-parseSpec :: P4 -> String -> String -> IO [(String, String)]
+type SpecValue = Either String [String]
+
+type Fields = [(String, String)]
+
+type SpecKey = String
+
+data Spec = Spec Fields [(SpecKey, SpecValue)] deriving (Show)
+
+parseSpec :: P4 -> String -> String -> IO Spec
 parseSpec (P4 fpClient) typ' form' = withCAString typ' $ \typ -> withCAString form' $ \form -> do
   (k, v, i) <- C.withPtrs_ $ \(k, v, i) ->
     [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->ParseSpec($(const char *typ), $(const char *form), $(const char ***k), $(const char ***v), $(int *i)); } |]
   let len = fromIntegral i
   dict <- liftM2 zip (process k len) (process v len)
-  free k >> free v >> return dict
+  free k >> free v
+  let fields = filter (\(n, m) -> map toLower n == map toLower m) dict
+  let values = filter (`notElem` fields) dict
+  return $ Spec fields (foldl' go [] values)
   where
     process arr len = bracket (peekArray len arr) (mapM_ free) (mapM peekCAString)
+    go acc (k, v)
+      | multivalued k =
+          let tag = strip k
+           in case filter (\(k', _) -> tag == k') acc of
+                [] -> append (tag, Right []) v : acc
+                (pair@(_, Right _) : _) -> append pair v : ditch pair acc
+                ((_, Left _) : _) -> error "?????????????????"
+      | otherwise = (k, Left v) : acc
+      where
+        multivalued = isDigit . last
+        strip = takeWhile (not . isDigit)
+        ditch (key, _) = filter ((/= key) . fst)
+        append (key, Right values) value = (key, Right (value : values)) -- fmap (fmap (value:)) pair
+        append pair _ = pair
 
 colored :: Color -> String -> IO ()
 colored clr txt = do
