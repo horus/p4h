@@ -42,15 +42,21 @@ void HsClientApi::ParseSpec(const char *type, const char *form, const char ***pk
 
 const char **HsClientApi::CopySv(std::vector<StrRef> &vec)
 {
-    size_t sz = vec.size();
-    const char **p = (const char **)malloc(sizeof(const char *) * sz);
+    std::size_t sz = vec.size();
+    const char **p = (const char **)std::malloc(sizeof(const char *) * sz);
     if (p != nullptr)
         for (int i = 0; i < sz; i++)
         {
             auto s = vec[i].Text();
-            size_t len = std::strlen(s) + 1;
-            p[i] = (const char *)malloc(len);
-            memcpy((void *)(p[i]), s, len);
+            std::size_t len = std::strlen(s) + 1;
+            if ((p[i] = (const char *)std::malloc(len)) == nullptr)
+            {
+                for (int j = i - 1; j >= 0; j--)
+                    std::free((void *)(p[j]));
+                std::free(p);
+                return nullptr;
+            }
+            std::memcpy((void *)(p[i]), s, len);
         }
     return p;
 }

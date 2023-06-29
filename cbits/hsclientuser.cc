@@ -128,11 +128,11 @@ const char *HsClientUser::DupOutput(StrBuf &output)
      */
     output.Terminate();
     const char *src = output.Text();
-    std::size_t len = std::strlen(src);
-    char *dst;
-    if ((dst = (char *)std::malloc(len + 1)) == nullptr)
+    std::size_t len = std::strlen(src)+1;
+    const char *dst;
+    if ((dst = (const char *)std::malloc(len)) == nullptr)
         return nullptr;
-    std::memcpy(dst, src, len + 1);
+    std::memcpy((void *)dst, src, len);
     output.Reset();
     return dst; // will be freed by the caller
 }
