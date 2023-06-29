@@ -1,6 +1,6 @@
 # p4h
 
-(dysfunctional) Perforce API binding
+(dysfunctional) Perforce Helix Core API binding
 
 I don't quite like command line wrappers, so here it is. Probably not what you expected, as I know nothing about C++. I just make it compile, that's all.
 
@@ -42,15 +42,76 @@ loop #0
 ... ...
 ```
 
-Spec parsing example:
+### Spec parsing
 
 ```haskell
-parseSpec p4 "user" "User:   super\nEmail:  super@example.org\nUpdate: 2023/06/09 17:59:33\nAccess: 2023/06/28 17:35:45\nFullName:       super\n"
+-- actual data omitted
+parseSpec p4 typ form
 ```
-...this would mostly output the following:
+...output examples:
 
-```
-[("user","User"),("type","Type"),("email","Email"),("update","Update"),("access","Access"),("fullname","FullName"),("jobview","JobView"),("password","Password"),("authmethod","AuthMethod"),("reviews","Reviews"),("User","super"),("Email","super@example.org"),("Update","2023/06/09 17:59:33"),("Access","2023/06/28 17:35:45"),("FullName","super")]
+```haskell
+-- client
+  Spec
+    [ ("client", "Client"),
+      ("update", "Update"),
+      ("access", "Access"),
+      ("owner", "Owner"),
+      ("host", "Host"),
+      ("description", "Description"),
+      ("root", "Root"),
+      ("altroots", "AltRoots"),
+      ("options", "Options"),
+      ("submitoptions", "SubmitOptions"),
+      ("lineend", "LineEnd"),
+      ("stream", "Stream"),
+      ("streamatchange", "StreamAtChange"),
+      ("serverid", "ServerID"),
+      ("type", "Type"),
+      ("backup", "Backup"),
+      ("view", "View"),
+      ("changeview", "ChangeView")
+    ]
+    [ ("View", Right ["//test/... //depot/test/..."]),
+      ("LineEnd", Left "local"),
+      ("SubmitOptions", Left "submitunchanged"),
+      ("Options", Left "noallwrite noclobber nocompress unlocked nomodtime normdir"),
+      ("Root", Left "/root/workspace"),
+      ("Description", Left "       Created by superman.\n"),
+      ("Host", Left "perforce"),
+      ("Owner", Left "perforce"),
+      ("Access", Left "2023/06/29 10:23:56"),
+      ("Update", Left "2023/05/09 18:03:03"),
+      ("Client", Left "test")
+    ]
+-- protect
+  Spec
+    [ ("subpath", "SubPath"),
+      ("update", "Update"),
+      ("protections", "Protections")
+    ]
+    [ ( "Protections",
+        Right
+          [ "write group a * //depot1/...",
+            "write group b * //depot2/...",
+            "list group c * -//depot3/...",
+            "list group d * -//depot4/...",
+            "list group e * -//depot5/...",
+            "write group f * //depot6/...",
+            "write group g * //depot7/...",
+            "read group h * //depot8/...",
+            "write group i * //depot9/...",
+            "write group j * //depot10/...",
+            "read group k * //depot11/...",
+            "read group l * //depot12/...",
+            "write group m * //depot/...",
+            "super user n * //...",
+            "super user o * //...",
+            "super user p * //..."
+          ]
+      ),
+      ("Update", Left "2023/06/19 10:25:38")
+    ]
 ```
 
 ...however I'm still experimenting.
