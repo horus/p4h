@@ -53,7 +53,7 @@ loop #0
 ... ...
 ```
 
-In order to run p4 commands, please use the following pattern:
+In order to run `p4` commands, please use the following pattern:
 
 ```haskell
 withP4Env env $ \p4 -> do
