@@ -25,6 +25,7 @@ dependencies:
 - bytestring
 - inline-c
 - inline-c-cpp
+- unordered-containers
 
 ghc-options:
 - -O2

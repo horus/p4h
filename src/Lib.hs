@@ -11,6 +11,9 @@ import Control.Monad (guard, liftM2, unless, (>=>))
 import Data.ByteString (ByteString, packCString)
 import Data.Char (isDigit, toLower)
 import Data.Foldable (foldl')
+import Data.Function (on)
+import qualified Data.HashMap.Strict as HM
+import Data.List ((\\))
 import Foreign.C.String (newCString, peekCAString, peekCString, withCAString)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr)
 import Foreign.Marshal (maybePeek, toBool)
@@ -191,25 +194,18 @@ parseSpec (P4 fpClient) typ' form' = withCAString typ' $ \typ -> withCAString fo
   let len = fromIntegral i
   dict <- liftM2 zip (process k len) (process v len)
   free k >> free v
-  let fields = filter (\(n, m) -> map toLower n == map toLower m) dict
-  let values = filter (`notElem` fields) dict
-  return $ Spec fields (foldl' go [] values)
+  let fields = filter (uncurry ((==) `on` map toLower)) dict
+      values = HM.toList $ foldl' go HM.empty (dict \\ fields)
+  return $ Spec fields values
   where
     process arr len = bracket (peekArray len arr) (mapM_ free) (mapM peekCAString)
-    go acc (k, v)
-      | multivalued k =
-          let tag = strip k
-           in case filter (\(k', _) -> tag == k') acc of
-                [] -> append (tag, Right []) v : acc
-                (pair@(_, Right _) : _) -> append pair v : ditch pair acc
-                ((_, Left _) : _) -> error "?????????????????"
-      | otherwise = (k, Left v) : acc
+    -- https://github.com/git/git/blob/master/git-p4.py#L1401
+    go m (k, v)
+      | multivalued k = HM.insertWith (liftM2 (++)) (nameOnly k) (Right [v]) m
+      | otherwise = HM.insert k (Left v) m
       where
         multivalued = isDigit . last
-        strip = takeWhile (not . isDigit)
-        ditch (key, _) = filter ((/= key) . fst)
-        append (key, Right values) value = (key, Right (value : values)) -- fmap (fmap (value:)) pair
-        append pair _ = pair
+        nameOnly = takeWhile (not . isDigit)
 
 colored :: Color -> String -> IO ()
 colored clr txt = do
