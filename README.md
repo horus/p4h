@@ -2,6 +2,19 @@
 
 (dysfunctional) Perforce Helix Core API wrapper
 
+## Goal
+
+This is the very implementation with my personal bias. It's far from mature.
+
+- ✅ Run basic Perforce (p4) commands
+- 🧪 Parse and format specs
+- 🧪 Handle errors
+- 🧪 Auxiliary functions
+- ❓ Progress
+- ❓ Revision & Integration
+- ❓ Merge & Resolver
+- ❓ Graph / Stream mode support
+
 I don't quite like command line wrappers, so here it is. Probably not what you expected, as I know nothing about C++. I just make it compile, that's all.
 
 If you have both Haskell and C++ expertise please help.
@@ -134,6 +147,11 @@ parseSpec p4 typ form
 > The Helix Server protocol is not designed to support multiple concurrent queries over the same connection. Multithreaded applications that use the C++ API or derived APIs should ensure that a separate connection is used for each thread, or that only one thread may use a shared connection at a time.
 
 That's what the document says, so I go create a new connection every time.
+
+Use [Simple Haskell](https://www.simplehaskell.org/): avoid involving any advanced skills makes it easy to use. I know there's a Reader which could save some keystrokes, however I keep everything strictly in the IO monad.
+
+I code C++ in C-style, I only make sure it compiles and won't leak serious memory.
+Please also check [these](https://github.com/perforce/p4perl/) [official](https://github.com/perforce/p4python/) [repos](https://github.com/perforce/p4ruby).
 
 ## Build
 
