@@ -21,7 +21,7 @@ import Foreign.Marshal.Alloc (free)
 import Foreign.Marshal.Array (peekArray, withArrayLen)
 import Foreign.Ptr (nullPtr)
 import qualified Language.C.Inline.Cpp as C
-import System.Console.ANSI
+import Util
 
 data ClientAPI
 
@@ -218,15 +218,3 @@ formatSpec (P4 fpClient) typ' (Spec fields pairs) = do
         go acc (k, Left v) = (k, v) : acc
         go acc (k, Right vs) = let ks = map ((k ++) . show) [0 :: Int ..] in (zip ks vs ++ acc)
     freeCpairs (ckeys, cvals) = mapM_ free ckeys >> mapM_ free cvals
-
-colored :: Color -> String -> IO ()
-colored clr txt = do
-  setSGR [SetColor Foreground Vivid clr]
-  putStr txt
-  setSGR [Reset]
-
-both :: (a -> IO b) -> (a, a) -> IO (b, b)
-both m (a, b) = do
-  a' <- m a
-  b' <- m b
-  return (a', b')
