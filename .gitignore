@@ -2,4 +2,4 @@
 *~
 *.lock
 test/
-p4api/lib_*
+p4api/
