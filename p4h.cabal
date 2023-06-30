@@ -37,8 +37,8 @@ library
   cxx-sources:
       cbits/hsclientuser.cc
       cbits/hsclientapi.cc
-      cbits/hsspecdata.cpp
-      cbits/specmgr.cpp
+      cbits/hsspecdata.cc
+      cbits/specmgr.cc
   build-depends:
       ansi-terminal
     , base >=4.7 && <5
