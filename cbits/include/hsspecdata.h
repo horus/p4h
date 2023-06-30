@@ -1,5 +1,5 @@
-#ifndef _HS_SPECDATA_H
-#define _HS_SPECDATA_H
+#ifndef _HS_SPEC_DATA_H
+#define _HS_SPEC_DATA_H
 
 class HsSpecData : public SpecData
 {
