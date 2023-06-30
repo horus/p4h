@@ -1,4 +1,6 @@
 #include "hsclientapi.h"
+#include <cstdlib>
+#include <cstring>
 
 HsClientApi::HsClientApi() : ui(&specMgr)
 {
@@ -74,7 +76,7 @@ const char **HsClientApi::CopySv(std::vector<StrRef> &vec)
     std::size_t sz = vec.size();
     const char **p = (const char **)std::malloc(sizeof(const char *) * sz);
     if (p != nullptr)
-        for (int i = 0; i < sz; i++)
+        for (std::size_t i = 0; i < sz; i++)
         {
             auto s = vec[i].Text();
             std::size_t len = std::strlen(s) + 1;
