@@ -21,6 +21,13 @@ If you have both Haskell and C++ expertise please help.
 
 ## Examples
 
+The functions are named after their official siblings.
+
+| P4Perl                      | p4h                                      |
+|:----------------------------|:-----------------------------------------|
+| `$p4->SetUser($username);`  |  `setUser p4 username`                   |
+| `$p4->Run($cmd, $arg, ...)` |  `setArgv p4 [arg ...]`<br>`run p4 cmd`  |
+
 An alternative version of [this](https://www.perforce.com/manuals/p4api/Content/P4API/clientapi.dropped.html#clientapi.dropped.example) example:
 
 ```haskell
@@ -68,79 +75,16 @@ withP4Env env $ \p4 -> do
     env = P4Env client host password port user -- settings
 ```
 
-### Spec parsing
+### Spec parsing & formatting
 
 ```haskell
--- actual data omitted
-parseSpec p4 typ form
-```
-...output examples:
+-- Spec [("field", "Field") ... ]
+--      [ ("field1", Left "singleValue")
+--      , ("field2", Right ["value1", "value2", ...])]
 
-```haskell
--- client
-  Spec
-    [ ("client", "Client"),
-      ("update", "Update"),
-      ("access", "Access"),
-      ("owner", "Owner"),
-      ("host", "Host"),
-      ("description", "Description"),
-      ("root", "Root"),
-      ("altroots", "AltRoots"),
-      ("options", "Options"),
-      ("submitoptions", "SubmitOptions"),
-      ("lineend", "LineEnd"),
-      ("stream", "Stream"),
-      ("streamatchange", "StreamAtChange"),
-      ("serverid", "ServerID"),
-      ("type", "Type"),
-      ("backup", "Backup"),
-      ("view", "View"),
-      ("changeview", "ChangeView")
-    ]
-    [ ("View", Right ["//test/... //depot/test/..."]),
-      ("LineEnd", Left "local"),
-      ("SubmitOptions", Left "submitunchanged"),
-      ("Options", Left "noallwrite noclobber nocompress unlocked nomodtime normdir"),
-      ("Root", Left "/root/workspace"),
-      ("Description", Left "       Created by superman.\n"),
-      ("Host", Left "perforce"),
-      ("Owner", Left "perforce"),
-      ("Access", Left "2023/06/29 10:23:56"),
-      ("Update", Left "2023/05/09 18:03:03"),
-      ("Client", Left "test")
-    ]
--- protect
-  Spec
-    [ ("subpath", "SubPath"),
-      ("update", "Update"),
-      ("protections", "Protections")
-    ]
-    [ ( "Protections",
-        Right
-          [ "write group a * //depot1/...",
-            "write group b * //depot2/...",
-            "list group c * -//depot3/...",
-            "list group d * -//depot4/...",
-            "list group e * -//depot5/...",
-            "write group f * //depot6/...",
-            "write group g * //depot7/...",
-            "read group h * //depot8/...",
-            "write group i * //depot9/...",
-            "write group j * //depot10/...",
-            "read group k * //depot11/...",
-            "read group l * //depot12/...",
-            "write group m * //depot/...",
-            "super user n * //...",
-            "super user o * //...",
-            "super user p * //..."
-          ]
-      ),
-      ("Update", Left "2023/06/19 10:25:38")
-    ]
+spec <- parseSpec p4 typ form
+form <- formatSpec p4 typ spec
 ```
-
-...however I'm still experimenting.
 
 ## Rationale
 

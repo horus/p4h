@@ -41,6 +41,7 @@ ghc-options:
 
 library:
   source-dirs: src
+  exposed-modules: P4
   cxx-sources:
   - cbits/hsclientuser.cc
   - cbits/hsclientapi.cc
