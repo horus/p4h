@@ -175,3 +175,9 @@ API variants available:
 ```
 # apt install build-essential haskell-stack libssl-dev
 ```
+
+#### CentOS
+
+```
+# yum install openssl-devel gcc gcc-c++ make
+```
