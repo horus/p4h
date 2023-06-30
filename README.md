@@ -79,8 +79,8 @@ withP4Env env $ \p4 -> do
 
 ```haskell
 -- Spec [("field", "Field") ... ]
---      [ ("field1", Left "singleValue")
---      , ("field2", Right ["value1", "value2", ...])]
+--      [("field1", Left "singleValue")
+--      ,("field2", Right ["value1", "value2", ...])]
 
 spec <- parseSpec p4 typ form
 form <- formatSpec p4 typ spec
