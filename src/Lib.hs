@@ -165,17 +165,16 @@ connect :: P4 -> IO ()
 connect (P4 fpClient) = [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Connect(); } |]
 
 run :: P4 -> String -> IO (Either String String)
-run (P4 fpClient) cmd' = do
-  (msg, err) <- C.withPtrs_ $ \(msg, err) ->
-    withCAString cmd' $ \cmd ->
-      [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Run($(const char *cmd), $(const char **msg), $(const char **err)); } |]
-  guard (msg /= nullPtr && err /= nullPtr)
-  val <- liftM2 ret (peekCAString msg) (peekCAString err)
-  free msg >> free err
-  return val
+run (P4 fpClient) cmd' = bracket runCmd freeOutput grab
   where
-    ret a "" = Right a
-    ret _ b = Left b
+    runCmd = C.withPtrs_ $ \(msg, err) -> withCAString cmd' $ \cmd ->
+      [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Run($(const char *cmd), $(const char **msg), $(const char **err)); } |]
+    freeOutput (msg, err) = free msg >> free err
+    grab output@(msg, err) = do
+      guard (msg /= nullPtr && err /= nullPtr)
+      ret <$> both peekCAString output
+      where
+        ret (a, b) = if b /= "" then Left b else Right a
 
 type SpecValue = Either String [String]
 
@@ -214,9 +213,8 @@ formatSpec (P4 fpClient) typ' (Spec fields pairs) = do
   where
     format (ckeys, cvals) = withCAString typ' $ \typ -> withArray ckeys $ \k -> withArrayLen cvals $ \len v ->
       let i = fromIntegral len in [C.exp| const char *{ $fptr-ptr:(HsClientApi *fpClient)->FormatSpec($(const char *typ), $(const char *k[]), $(const char *v[]), $(int i)) } |]
-    newCpairs = both newCAString $ unzip (fields ++ foldl' go [] pairs)
+    newCpairs = both (mapM newCAString) $ unzip (fields ++ foldl' go [] pairs)
       where
-        both f (a, b) = let m = mapM f in do a' <- m a; b' <- m b; return (a', b')
         go acc (k, Left v) = (k, v) : acc
         go acc (k, Right vs) = let ks = map ((k ++) . show) [0 :: Int ..] in (zip ks vs ++ acc)
     freeCpairs (ckeys, cvals) = mapM_ free ckeys >> mapM_ free cvals
@@ -226,3 +224,9 @@ colored clr txt = do
   setSGR [SetColor Foreground Vivid clr]
   putStr txt
   setSGR [Reset]
+
+both :: (a -> IO b) -> (a, a) -> IO (b, b)
+both m (a, b) = do
+  a' <- m a
+  b' <- m b
+  return (a', b')
