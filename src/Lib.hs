@@ -159,7 +159,7 @@ getProtocol (P4 fpClient) var = withCAString var $ \p -> do
   maybePeek peekCAString pv
 
 dropped :: P4 -> IO Bool
-dropped (P4 fpClient) = toBool <$> [C.block| int { return $fptr-ptr:(HsClientApi *fpClient)->Dropped(); } |]
+dropped (P4 fpClient) = toBool <$> [C.exp| bool { $fptr-ptr:(HsClientApi *fpClient)->Dropped() } |]
 
 connect :: P4 -> IO ()
 connect (P4 fpClient) = [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Connect(); } |]
