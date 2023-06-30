@@ -4,7 +4,7 @@
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
-module Lib (runP4) where
+module P4 (runP4) where
 
 import Control.Exception (bracket)
 import Control.Monad (guard, liftM2, unless, (>=>))

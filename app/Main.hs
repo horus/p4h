@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Lib (runP4)
+import P4 (runP4)
 import System.Environment (getArgs)
 
 main :: IO ()
