@@ -157,7 +157,7 @@ Please also check [these](https://github.com/perforce/p4perl/) [official](https:
 
 Download the Helix Core C/C++ API [here](https://www.perforce.com/downloads/helix-core-c/c-api).
 
-While `p4api/include` may contain the up-to-date version of the header files, feel free to replace them. You also need to put the libs into the corresponding directory, check `extra-lib-dirs` in `package.yaml`.
+Place up-to-date version of the header files into `p4api/include`. You also need to put the libs into the corresponding directory, check `extra-lib-dirs` in `package.yaml`.
 
 ### macOS
 
