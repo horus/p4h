@@ -159,4 +159,19 @@ Download the Helix Core C/C++ API [here](https://www.perforce.com/downloads/heli
 
 While `p4api/include` may contain the up-to-date version of the header files, feel free to replace them. You also need to put the libs into the corresponding directory, check `extra-lib-dirs` in `package.yaml`.
 
-__Note__ (for macOS): Don't forget to add the directory where `libssl` is located.
+### macOS
+
+Don't forget to add the directory where `libssl` is located, you probably need to install OpenSSL via [Homebrew](https://brew.sh/).
+
+### Linux
+
+API variants available:
+
+- GLIBC 2.12 / 2.3
+- OpenSSL 1.0.2 / 1.1.1 / 3
+
+#### Debian
+
+```
+# apt install build-essential haskell-stack libssl-dev
+```
