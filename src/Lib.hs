@@ -64,7 +64,7 @@ runP4 = runP4Env defaultP4Env >=> either (colored Red) (colored Green)
 
 runP4Env :: P4Env -> [String] -> IO (Either String String)
 runP4Env _ [] = return $ Left "p4h\n"
-runP4Env env (cmd : arg) = withP4Env env $ \p4 -> setArgv p4 arg >> run p4 cmd >> getOutput2 p4
+runP4Env env (cmd : arg) = withP4Env env $ \p4 -> setArgv p4 arg >> run p4 cmd
 
 defaultP4Env :: P4Env
 defaultP4Env = P4Env Nothing Nothing Nothing Nothing Nothing
