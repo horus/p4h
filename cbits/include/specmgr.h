@@ -6,11 +6,11 @@ Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
 1.  Redistributions of source code must retain the above copyright
-    notice, this list of conditions and the following disclaimer.
+	notice, this list of conditions and the following disclaimer.
 
 2.  Redistributions in binary form must reproduce the above copyright
-    notice, this list of conditions and the following disclaimer in the
-    documentation and/or other materials provided with the distribution.
+	notice, this list of conditions and the following disclaimer in the
+	documentation and/or other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTR
 IBUTORS "AS IS"
@@ -39,62 +39,59 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 
 class StrBufDict;
-class SpecMgr 
+class SpecMgr
 {
-    public:
-		SpecMgr();
-		~SpecMgr();
-	void	SetDebug( int i )	{ debug = i; 	}
+public:
+	SpecMgr();
+	~SpecMgr();
+	void SetDebug(int i) { debug = i; }
 
 	// Clear the spec cache and revert to internal defaults
-	void	Reset();
+	void Reset();
 
 	// Add a spec to the cache
-	void	AddSpecDef( const char *type, StrPtr &specDef );
-	void	AddSpecDef( const char *type, const char * specDef );
+	void AddSpecDef(const char *type, StrPtr &specDef);
+	void AddSpecDef(const char *type, const char *specDef);
 
 	// Check that a type of spec is known.
-	int	HaveSpecDef( const char *type );
+	int HaveSpecDef(const char *type);
 
 	//
 	// Parse routine: converts strings into Perl hashes, and returns
 	// a reference to the hash.
 	//
-	StrDict *	StringToSpec( const char *type, const char *spec, Error *e );
+	StrDict *StringToSpec(const char *type, const char *spec, Error *e);
 
 	//
-	// Format routine. updates a StrBuf object with the form; 
+	// Format routine. updates a StrBuf object with the form;
 	// that can then be converted to a Perl string where required. One
 	// routine for when we know the type of spec, and one for when we
 	// don't.
 	//
-	void	SpecToString(const char *type, StrDict * hash, StrBuf &b, Error *e);
+	void SpecToString(const char *type, StrDict *hash, StrBuf &b, Error *e);
 
-	// 
+	//
 	// Convert a Perforce StrDict into a P4::Spec object. This is for
 	// 2005.2 and later servers where the forms are supplied pre-parsed
 	// into a dictionary - we just need to convert them. In this case,
 	// we have the spec, but we don't know what type of spec it is.
 	//
-	// This returns a reference to the P4::Spec object, which is 
+	// This returns a reference to the P4::Spec object, which is
 	// really a Hash with some extras.
 	//
-	StrDict *	StrDictToSpec( StrDict *dict, StrPtr *specDef );
-
+	StrDict *StrDictToSpec(StrDict *dict, StrPtr *specDef);
 
 	//
 	// Return a list of the fields in a given type of spec. Return Qnil
 	// if the spec type is not known.
 	//
-	StrDict *	SpecFields( const char *type );
+	StrDict *SpecFields(const char *type);
 
-    private:
+private:
+	void SplitKey(const StrPtr *key, StrBuf &base, StrBuf &index);
+	StrDict *SpecFields(StrPtr *specDef);
 
-	void	SplitKey( const StrPtr *key, StrBuf &base, StrBuf &index );
-	void	InsertItem( StrDict * hash, const StrPtr *var, const StrPtr *val );
-	StrDict *	SpecFields( StrPtr *specDef );
-
-    private:
-	int		debug;
-	StrBufDict *	specs;
+private:
+	int debug;
+	StrBufDict *specs;
 };

@@ -14,9 +14,9 @@ import Data.Foldable (foldl')
 import Data.Function (on)
 import qualified Data.HashMap.Strict as HM
 import Data.List ((\\))
-import Foreign.C.String (newCString, peekCAString, peekCString, withCAString)
+import Foreign.C.String (newCAString, peekCAString, withCAString)
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr)
-import Foreign.Marshal (maybePeek, toBool)
+import Foreign.Marshal (maybePeek, toBool, withArray)
 import Foreign.Marshal.Alloc (free)
 import Foreign.Marshal.Array (peekArray, withArrayLen)
 import Foreign.Ptr (nullPtr)
@@ -132,7 +132,7 @@ setInput (P4 fpClient) inp' = withCAString inp' $ \inp ->
 
 setArgv :: P4 -> [String] -> IO ()
 setArgv (P4 fpClient) args = unless (null args) $
-  bracket (mapM newCString args) (mapM_ free) $ \argv' -> withArrayLen argv' $ \argc' argv -> do
+  bracket (mapM newCAString args) (mapM_ free) $ \argv' -> withArrayLen argv' $ \argc' argv -> do
     let argc = fromIntegral argc'
     [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetArgv($(int argc), $(char *const *argv)); } |]
 
@@ -170,7 +170,7 @@ run (P4 fpClient) cmd' = do
     withCAString cmd' $ \cmd ->
       [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->Run($(const char *cmd), $(const char **msg), $(const char **err)); } |]
   guard (msg /= nullPtr && err /= nullPtr)
-  val <- liftM2 ret (peekCString msg) (peekCString err)
+  val <- liftM2 ret (peekCAString msg) (peekCAString err)
   free msg >> free err
   return val
   where
@@ -186,17 +186,19 @@ type SpecKey = String
 data Spec = Spec Fields [(SpecKey, SpecValue)] deriving (Show)
 
 parseSpec :: P4 -> String -> String -> IO Spec
-parseSpec (P4 fpClient) typ' form' = withCAString typ' $ \typ -> withCAString form' $ \form -> do
-  (k, v, i) <- C.withPtrs_ $ \(k, v, i) ->
-    [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->ParseSpec($(const char *typ), $(const char *form), $(const char ***k), $(const char ***v), $(int *i)); } |]
-  let len = fromIntegral i
-  dict <- liftM2 zip (process k len) (process v len)
-  free k >> free v
+parseSpec (P4 fpClient) typ' form' = do
+  dict <- bracket parse free2 build
   let fields = filter (uncurry ((==) `on` map toLower)) dict
       values = HM.toList $ foldl' go HM.empty (dict \\ fields)
   return $ Spec fields values
   where
-    process arr len = bracket (peekArray len arr) (mapM_ free) (mapM peekCAString)
+    parse = C.withPtrs_ $ \(k, v, i) ->
+      withCAString typ' $ \typ -> withCAString form' $ \form -> [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->ParseSpec($(const char *typ), $(const char *form), $(const char ***k), $(const char ***v), $(int *i)); } |]
+    build (k, v, i) = liftM2 zip (process k) (process v)
+      where
+        process arr = bracket (peekArray len arr) (mapM_ free) (mapM peekCAString)
+        len = fromIntegral i
+    free2 (k, v, _) = free k >> free v
     -- https://github.com/git/git/blob/master/git-p4.py#L1401
     go m (k, v)
       | multivalued k = HM.insertWith (liftM2 (++)) (nameOnly k) (Right [v]) m
@@ -204,6 +206,20 @@ parseSpec (P4 fpClient) typ' form' = withCAString typ' $ \typ -> withCAString fo
       where
         multivalued = isDigit . last
         nameOnly = takeWhile (not . isDigit)
+
+formatSpec :: P4 -> String -> Spec -> IO (Maybe String)
+formatSpec (P4 fpClient) typ' (Spec fields pairs) = do
+  --                                            v-- possibly free nullptr here, it is assumed to be fine
+  bracket (bracket newCpairs freeCpairs format) free (maybePeek peekCAString)
+  where
+    format (ckeys, cvals) = withCAString typ' $ \typ -> withArray ckeys $ \k -> withArrayLen cvals $ \len v ->
+      let i = fromIntegral len in [C.exp| const char *{ $fptr-ptr:(HsClientApi *fpClient)->FormatSpec($(const char *typ), $(const char *k[]), $(const char *v[]), $(int i)) } |]
+    newCpairs = both newCAString $ unzip (fields ++ foldl' go [] pairs)
+      where
+        both f (a, b) = let m = mapM f in do a' <- m a; b' <- m b; return (a', b')
+        go acc (k, Left v) = (k, v) : acc
+        go acc (k, Right vs) = let ks = map ((k ++) . show) [0 :: Int ..] in (zip ks vs ++ acc)
+    freeCpairs (ckeys, cvals) = mapM_ free ckeys >> mapM_ free cvals
 
 colored :: Color -> String -> IO ()
 colored clr txt = do

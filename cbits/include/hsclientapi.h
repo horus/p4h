@@ -2,8 +2,9 @@
 #define _HS_CLIENT_API_H
 
 #include "p4/clientapi.h"
+#include "p4/stdhdrs.h"
+#include "p4/strtable.h"
 #include "specmgr.h"
-#include "hsclientapi.h"
 #include "hsclientuser.h"
 #include <vector>
 
@@ -14,7 +15,6 @@ public:
 	~HsClientApi();
 
 public:
-	void ParseSpec(const char *type, const char *form, const char ***k, const char ***v, int *len);
 	void Connect();
 	void Disconnect();
 	bool Dropped();
@@ -31,6 +31,10 @@ public:
 	void SetProg(const char *p) { client.SetProg(p); }
 	void SetVersion(const char *v) { client.SetVersion(v); }
 	void SetHandler(const char *meth, void (*fout)(const char *)) { ui.SetHandler(meth, fout); }
+
+public:
+	void ParseSpec(const char *type, const char *form, const char ***k, const char ***v, int *len);
+	const char *FormatSpec(const char *type, const char *k[], const char *v[], int len);
 
 private:
 	enum
@@ -86,6 +90,7 @@ private:
 
 private:
 	const char **CopySv(std::vector<StrRef> &vec);
+	const char *DupOutput(StrBuf &output);
 
 private:
 	ClientApi client;
