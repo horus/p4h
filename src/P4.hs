@@ -106,6 +106,7 @@ setHandler (P4 fpClient) handler = do
     get (OutputMessage h) = peekCAString >=> h
     get (OutputStat h) = peekCAString >=> h
 
+-- XXX: maybe Template Haskell would help a bit?
 setPort :: P4 -> String -> IO ()
 setPort (P4 fpClient) port' = withCAString port' $ \port ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetPort($(const char *port)); } |]
@@ -147,6 +148,16 @@ setVersion (P4 fpClient) version' = withCAString version' $ \version ->
 setProtocol :: P4 -> String -> String -> IO ()
 setProtocol (P4 fpClient) var val = withCAString var $ \p -> withCAString val $ \v ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetProtocol($(const char *p), $(const char *v)); } |]
+
+getClient :: P4 -> IO (Maybe String)
+getClient (P4 fpClient) = do
+  pv <-
+    [C.block| const char *{
+            const StrPtr &client = $fptr-ptr:(HsClientApi *fpClient)->GetClient();
+            return client.Text();
+          }
+        |]
+  maybePeek peekCAString pv
 
 getProtocol :: P4 -> String -> IO (Maybe String)
 getProtocol (P4 fpClient) var = withCAString var $ \p -> do

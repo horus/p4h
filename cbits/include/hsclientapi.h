@@ -27,6 +27,7 @@ public:
 	void SetPort(const char *p) { client.SetPort(p); }
 	void SetClient(const char *c) { client.SetClient(c); }
 	StrPtr *GetProtocol(const char *p) { return client.GetProtocol(p); }
+	const StrPtr &GetClient() { return client.GetClient(); }
 	void SetProtocol(const char *var, const char *v) { client.SetProtocol(var, v); }
 	void SetProg(const char *p) { client.SetProg(p); }
 	void SetVersion(const char *v) { client.SetVersion(v); }
