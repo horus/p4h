@@ -75,6 +75,45 @@ withP4Env env $ \p4 -> do
     env = P4Env client host password port user -- settings
 ```
 
+Another helpful example would be an user command trigger, let's say, `pre-user-sync`:
+
+```haskell
+{-# LANGUAGE LambdaCase #-}
+
+module Main (main) where
+
+import Control.Monad (guard)
+import Data.List (isInfixOf, isSuffixOf)
+import Network.URI
+import P4
+
+main :: IO ()
+main = do
+  env <- getEnv
+  withP4Env env $ \p4 -> do
+    setInput p4 "my-super-password"
+    loginResult <- run p4 "login"
+    guard (loginResult == Right "User super logged in.\n")
+    Just client <- getClient p4
+    setArgv p4 ["-e", "//" ++ client ++ "/..."]
+    run p4 "files" >>= \case
+      Right output -> do
+        let files = [ file | line <- lines output, let fileRev = head (words line), let (file, _) = break (== '#') fileRev ]
+            forbidden = [ "secret" ]
+        if any (\file -> any (\keyword -> keyword `isInfixOf` file) forbidden) files
+          then putStrLn $ "action:fail\nmessage:" ++ escape "contains forbidden file(s)"
+          else putStrLn $ "action:pass\nmessage:" ++ escape "all files check"
+      Left e
+        | "no such file(s).\n" `isSuffixOf` e -> putStrLn "action:pass"
+        | otherwise -> putStrLn $ "action:fail\nmessage:" ++ escape e
+  where
+    getEnv = do
+      dict <- map (fmap (drop 1) . break (== ':')) . lines <$> getContents
+      let look = flip lookup dict
+      return $ P4Env (Just "super") Nothing (look "clienthost") (look "serverport") (look "client")
+    escape = escapeURIString isUnreserved
+```
+
 ### Spec parsing & formatting
 
 ```haskell
