@@ -32,6 +32,7 @@ public:
 	void SetProg(const char *p) { client.SetProg(p); }
 	void SetVersion(const char *v) { client.SetVersion(v); }
 	void SetHandler(const char *meth, void (*fout)(const char *)) { ui.SetHandler(meth, fout); }
+	void SetTrustFile(const char *c) { client.SetTrustFile(c); }
 
 public:
 	void ParseSpec(const char *type, const char *form, const char ***k, const char ***v, int *len);

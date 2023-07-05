@@ -149,6 +149,10 @@ setProtocol :: P4 -> String -> String -> IO ()
 setProtocol (P4 fpClient) var val = withCAString var $ \p -> withCAString val $ \v ->
   [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetProtocol($(const char *p), $(const char *v)); } |]
 
+setTrustFile :: P4 -> String -> IO ()
+setTrustFile (P4 fpClient) file' = withCAString file' $ \file ->
+  [C.block| void { $fptr-ptr:(HsClientApi *fpClient)->SetTrustFile($(const char *file)); } |]
+
 getClient :: P4 -> IO (Maybe String)
 getClient (P4 fpClient) = do
   pv <-
