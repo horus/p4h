@@ -23,10 +23,10 @@ If you have both Haskell and C++ expertise please help.
 
 The functions are named after their official siblings.
 
-| P4Perl                      | p4h                                      |
-|:----------------------------|:-----------------------------------------|
-| `$p4->SetUser($username);`  |  `setUser p4 username`                   |
-| `$p4->Run($cmd, $arg, ...)` |  `setArgv p4 [arg ...]`<br>`run p4 cmd`  |
+| P4Perl                      | p4h                         |
+|:----------------------------|:----------------------------|
+| `$p4->SetUser($username);`  |  `setUser p4 username`      |
+| `$p4->Run($cmd, $arg, ...)` |  `run' p4 [cmd, arg, ...]`  |
 
 An alternative version of [this](https://www.perforce.com/manuals/p4api/Content/P4API/clientapi.dropped.html#clientapi.dropped.example) example:
 
