@@ -191,6 +191,11 @@ run (P4 fpClient) cmd' = bracket runCmd freeOutput grab
       where
         ret (a, b) = if b /= "" then Left b else Right a
 
+run' :: P4 -> [String] -> IO (Either String String)
+run' _ [] = undefined -- feed the compiler, this should never be called with an empty list
+run' p4 (cmd:args) = setArgv p4 args >> run p4 cmd
+{-# INLINE run' #-}
+
 type SpecValue = Either String [String]
 
 type Fields = [(String, String)]

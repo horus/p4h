@@ -91,27 +91,31 @@ main :: IO ()
 main = do
   env <- getEnv
   withP4Env env $ \p4 -> do
-    setInput p4 "my-super-password"
-    loginResult <- run p4 "login"
-    guard (loginResult == Right "User super logged in.\n")
+    ticketStatus <- run' p4 ["login", "-s"]
+    when (ticketStatus == Left "Perforce password (P4PASSWD) invalid or unset.\n") $ do
+      setInput p4 "my-super-password"
+      loginResult <- run p4 "login"
+      guard (loginResult == Right "User super logged in.\n")
     Just client <- getClient p4
-    setArgv p4 ["-e", "//" ++ client ++ "/..."]
-    run p4 "files" >>= \case
+    run' p4 ["files", "-e", "//" ++ client ++ "/..."] >>= \case
       Right output -> do
         let files = [ file | line <- lines output, let fileRev = head (words line), let (file, _) = break (== '#') fileRev ]
             forbidden = [ "secret" ]
         if any (\file -> any (\keyword -> keyword `isInfixOf` file) forbidden) files
-          then putStrLn $ "action:fail\nmessage:" ++ escape "contains forbidden file(s)"
-          else putStrLn $ "action:pass\nmessage:" ++ escape "all files check"
+          then fail "contains forbidden file(s)"
+          else pass "all files check"
       Left e
-        | "no such file(s).\n" `isSuffixOf` e -> putStrLn "action:pass"
-        | otherwise -> putStrLn $ "action:fail\nmessage:" ++ escape e
+        | "no such file(s).\n" `isSuffixOf` e -> pass'
+        | otherwise -> fail e
   where
     getEnv = do
       dict <- map (fmap (drop 1) . break (== ':')) . lines <$> getContents
       let look = flip lookup dict
       return $ P4Env (Just "super") Nothing (look "clienthost") (look "serverport") (look "client")
     escape = escapeURIString isUnreserved
+    fail msg = putStrLn $ "action:fail\nmessage:" ++ escape msg
+    pass' = putStrLn "action:pass"
+    pass msg = putStrLn $ "action:pass\nmessage:" ++ escape msg
 ```
 
 ### Spec parsing & formatting
