@@ -84,7 +84,7 @@ Another helpful example would be an user command trigger, let's say, `pre-user-s
 
 module Main (main) where
 
-import Control.Monad (guard)
+import Control.Monad (guard, when)
 import Data.List (isInfixOf, isSuffixOf)
 import Network.URI
 import P4
@@ -94,18 +94,19 @@ main = do
   env <- getEnv
   withP4Env env $ \p4 -> do
     ticketStatus <- run' p4 ["login", "-s"]
-    when (ticketStatus == Left "Perforce password (P4PASSWD) invalid or unset.\n") $ do
-      setInput p4 "my-super-password"
-      loginResult <- run p4 "login"
-      guard (loginResult == Right "User super logged in.\n")
+    when
+      ( ticketStatus == Left "Perforce password (P4PASSWD) invalid or unset.\n"
+          || ticketStatus == Left "Your session has expired, please login again.\n"
+      )
+      $ do
+        setInput p4 "my-super-password"
+        loginResult <- run p4 "login"
+        guard (loginResult == Right "User super logged in.\n")
     Just client <- getClient p4
     run' p4 ["files", "-e", "//" ++ client ++ "/..."] >>= \case
-      Right output -> do
-        let files = [ file | line <- lines output, let fileRev = head (words line), let (file, _) = break (== '#') fileRev ]
-            forbidden = [ "secret" ]
-        if any (\file -> any (\keyword -> keyword `isInfixOf` file) forbidden) files
-          then fail "contains forbidden file(s)"
-          else pass "all files check"
+      Right output
+        | output `contain` ["secret"] -> fail "contains forbidden file(s)"
+        | otherwise -> pass "all files check"
       Left e
         | "no such file(s).\n" `isSuffixOf` e -> pass'
         | otherwise -> fail e
@@ -118,6 +119,11 @@ main = do
     fail msg = putStrLn $ "action:fail\nmessage:" ++ escape msg
     pass' = putStrLn "action:pass"
     pass msg = putStrLn $ "action:pass\nmessage:" ++ escape msg
+    contain output keywords =
+      let files = [ file | line <- lines output
+                         , let fileRev = head (words line)
+                         , let (file, _) = break (== '#') fileRev ]
+       in any (\file -> any (`isInfixOf` file) keywords) files
 ```
 
 ### Spec parsing & formatting
