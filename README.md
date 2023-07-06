@@ -67,6 +67,8 @@ withP4Env env $ \p4 -> do
   ... -- other settings here
   setArgv p4 ["arg1", "arg2", ...]
   output <- run p4 "cmd"
+  -- or
+  output' <- run' p4 ["cmd", "arg1", "arg2", ...]
   case output of
     Left err -> handle err
     Right ... -> ...
